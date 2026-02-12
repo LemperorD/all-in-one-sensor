@@ -1,0 +1,9 @@
+[submodule "src/hik_camera_ros2_driver"]
+	path = src/hik_camera_ros2_driver
+	url = https://github.com/LemperorD/hik_camera_ros2_driver.git
+[submodule "src/livox_ros_driver2"]
+	path = src/livox_ros_driver2
+	url = https://github.com/LemperorD/livox_ros_driver2.git
+[submodule "src/FAST_LIO_ROS2"]
+	path = src/FAST_LIO_ROS2
+	url = https://github.com/LemperorD/FAST_LIO_ROS2.git
