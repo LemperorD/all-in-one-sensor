@@ -15,9 +15,9 @@
 #include <geometry_msgs/msg/twist.hpp>
 
 #include "serial_communication/ros_serial_bridge.hpp"
-#include "serial_communication/Com.h"
+#include "serial_communication/Com.hpp"
 
-namespace bridge
+namespace serial_communication
 {
 
 typedef enum
@@ -27,13 +27,13 @@ typedef enum
   goHome,
 } chassisMode;
 
-class BridgeNode : public rclcpp::Node
+class SerialCommunicationNode : public rclcpp::Node
 {
 public:
-  explicit BridgeNode(const rclcpp::NodeOptions & options);
-  ~BridgeNode() override;
+  explicit SerialCommunicationNode(const rclcpp::NodeOptions & options);
+  ~SerialCommunicationNode() override;
 
-public: // 大Yaw电机编码值解码
+public: // 电机编码值解码
   inline double encoderToRad(float encoder)
   {
     constexpr double TWO_PI = 2.0 * M_PI;
@@ -61,7 +61,7 @@ private: // create a frame for vision
 private: // generate TF from gimbal_yaw_odom to gimbal_yaw 
   void publishTransformGimbalYaw(double Yaw);
 
-private: // 滑动窗口滤波,窗口数组成员变量,窗口长度成员变量
+private: // 滑动窗口滤波函数,窗口数组成员变量,窗口长度成员变量
   inline double dwa_filter(double sample);
   std::deque<double> dwa_;
   int max_dwa_size_ = 15;

@@ -1,13 +1,13 @@
-#include "serial_communication/bridge.hpp"
+#include "serial_communication/serial_communication.hpp"
 #include <algorithm>
 #include <cstring>
 #include <float.h>
 
-namespace bridge
+namespace serial_communication
 {
 
-BridgeNode::BridgeNode(const rclcpp::NodeOptions & options)
-: Node("bridge", options),
+SerialCommunicationNode::SerialCommunicationNode(const rclcpp::NodeOptions & options)
+: Node("serial_communication", options),
   port_name_("/dev/ttyACM0"),
   baud_rate_(115200)
 {
@@ -32,7 +32,7 @@ BridgeNode::BridgeNode(const rclcpp::NodeOptions & options)
   bridge_twist_pc_ = std::make_shared<RosSerialBridge
     <geometry_msgs::msg::Twist>>(
       this, "/cmd_vel", true,
-      std::bind(&BridgeNode::encodeTwist, this, std::placeholders::_1),
+      std::bind(&SerialCommunicationNode::encodeTwist, this, std::placeholders::_1),
       nullptr,
       std::bind(&SerialCommunicationClass::sendDataFrame, com_.get(), std::placeholders::_1, std::placeholders::_2),
       nullptr,
@@ -43,7 +43,7 @@ BridgeNode::BridgeNode(const rclcpp::NodeOptions & options)
     <std_msgs::msg::Float32>>(
       this, "/serial/Yaw", false,
       nullptr,
-      std::bind(&BridgeNode::decodeYaw, this, std::placeholders::_1),
+      std::bind(&SerialCommunicationNode::decodeYaw, this, std::placeholders::_1),
       nullptr,
       std::bind(&SerialCommunicationClass::receiveDataFrame, com_.get()),
       nullptr
@@ -53,7 +53,7 @@ BridgeNode::BridgeNode(const rclcpp::NodeOptions & options)
     <geometry_msgs::msg::Twist>>(
       this, "/serial/TES_speed", false,
       nullptr,
-      std::bind(&BridgeNode::decodeTESspeed, this, std::placeholders::_1),
+      std::bind(&SerialCommunicationNode::decodeTESspeed, this, std::placeholders::_1),
       nullptr,
       std::bind(&SerialCommunicationClass::receiveDataFrame, com_.get()),
       nullptr
@@ -61,7 +61,7 @@ BridgeNode::BridgeNode(const rclcpp::NodeOptions & options)
 
   gimbal_vision_timer_ = this->create_wall_timer(
   std::chrono::milliseconds(30),
-  std::bind(&BridgeNode::publishTransformGimbalVision, this));
+  std::bind(&SerialCommunicationNode::publishTransformGimbalVision, this));
 
   chassis_mode_sub_ = this->create_subscription<std_msgs::msg::UInt8>(
     "chassis_mode", 10,
@@ -70,9 +70,9 @@ BridgeNode::BridgeNode(const rclcpp::NodeOptions & options)
     });
 }
   
-BridgeNode::~BridgeNode()
+SerialCommunicationNode::~SerialCommunicationNode()
 { 
-  RCLCPP_INFO(this->get_logger(), "BridgeNode shutting down...");
+  RCLCPP_INFO(this->get_logger(), "SerialCommunicationNode shutting down...");
 
   if (gimbal_vision_timer_) gimbal_vision_timer_.reset();
 
@@ -82,10 +82,10 @@ BridgeNode::~BridgeNode()
   bridge_TESspeed_mcu_.reset();
   
   com_.reset();
-  RCLCPP_INFO(this->get_logger(), "BridgeNode shutdown complete.");
+  RCLCPP_INFO(this->get_logger(), "SerialCommunicationNode shutdown complete.");
 }
 
-uint8_t* BridgeNode::encodeTwist(const geometry_msgs::msg::Twist& msg)
+uint8_t* SerialCommunicationNode::encodeTwist(const geometry_msgs::msg::Twist& msg)
 {
   geometry_msgs::msg::Twist twist_chassis = transformVelocityToChassis(msg, yaw_diff_ * M_PI / 180.0);
 
@@ -124,7 +124,7 @@ uint8_t* BridgeNode::encodeTwist(const geometry_msgs::msg::Twist& msg)
   return payload;
 }
 
-std_msgs::msg::Float32 BridgeNode::decodeYaw(const uint8_t* payload)
+std_msgs::msg::Float32 SerialCommunicationNode::decodeYaw(const uint8_t* payload)
 {
   std_msgs::msg::Float32 msg;
   std::memcpy(&yaw_diff_, payload + 7, sizeof(float));
@@ -133,14 +133,14 @@ std_msgs::msg::Float32 BridgeNode::decodeYaw(const uint8_t* payload)
   return msg;
 }
 
-geometry_msgs::msg::Twist BridgeNode::decodeTESspeed(const uint8_t* payload)
+geometry_msgs::msg::Twist SerialCommunicationNode::decodeTESspeed(const uint8_t* payload)
 {
   geometry_msgs::msg::Twist msg;
   msg.angular.z = static_cast<double>(com_->readFloatLE(&payload[3]));
   return msg;
 }
 
-void BridgeNode::publishTransformGimbalVision()
+void SerialCommunicationNode::publishTransformGimbalVision()
 {
   geometry_msgs::msg::TransformStamped transformStamped;
 
@@ -183,7 +183,7 @@ void BridgeNode::publishTransformGimbalVision()
   tf_broadcaster_->sendTransform(gimbal_tf);
 }
 
-void BridgeNode::publishTransformGimbalYaw(double Yaw)
+void SerialCommunicationNode::publishTransformGimbalYaw(double Yaw)
 {
   geometry_msgs::msg::TransformStamped tf_msg;
 
@@ -206,7 +206,7 @@ void BridgeNode::publishTransformGimbalYaw(double Yaw)
   tf_broadcaster_->sendTransform(tf_msg);
 }
 
-inline double BridgeNode::dwa_filter(double sample){
+inline double SerialCommunicationNode::dwa_filter(double sample){
   dwa_.push_back(sample);
   if (dwa_.size() > max_dwa_size_){
     dwa_.pop_front();
@@ -216,7 +216,7 @@ inline double BridgeNode::dwa_filter(double sample){
   return sum / dwa_.size();
 }
 
-inline geometry_msgs::msg::Twist BridgeNode::transformVelocityToChassis(
+inline geometry_msgs::msg::Twist SerialCommunicationNode::transformVelocityToChassis(
   const geometry_msgs::msg::Twist & twist_in, double yaw_diff)
 {
   geometry_msgs::msg::Twist out;
@@ -226,7 +226,7 @@ inline geometry_msgs::msg::Twist BridgeNode::transformVelocityToChassis(
   return out;
 }
 
-} // namespace bridge
+} // namespace serial_communication
 
 #include "rclcpp_components/register_node_macro.hpp"
-RCLCPP_COMPONENTS_REGISTER_NODE(bridge::BridgeNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(serial_communication::SerialCommunicationNode)
