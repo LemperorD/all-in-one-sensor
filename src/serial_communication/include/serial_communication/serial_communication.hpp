@@ -64,7 +64,7 @@ private: // generate TF from gimbal_yaw_odom to gimbal_yaw
 private: // 滑动窗口滤波函数,窗口数组成员变量,窗口长度成员变量
   inline double dwa_filter(double sample);
   std::deque<double> dwa_;
-  int max_dwa_size_ = 15;
+  u_int16_t max_dwa_size_ = 15;
 
 private:
   // 参数

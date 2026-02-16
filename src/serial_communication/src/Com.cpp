@@ -143,7 +143,7 @@ void SerialCommunicationClass::sendDataFrame(const uint8_t* data, size_t len)
     return;
   }
 
-  size_t frame_len = len + FRAME_MIN_SIZE;
+  ssize_t frame_len = len + FRAME_MIN_SIZE;
   // std::cout << termcolor::blue << "Sending frame of length: " << frame_len << termcolor::reset << std::endl;
 
   std::vector<uint8_t> frame(frame_len);
