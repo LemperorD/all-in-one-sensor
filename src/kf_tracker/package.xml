@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>ESKFtracker</name>
+  <name>kf_tracker</name>
   <version>0.0.0</version>
-  <description>used to track UAV by ESKF</description>
+  <description>use KF to track uav</description>
   <maintainer email="ld2382619813@163.com">ld</maintainer>
   <license>Apache-2.0</license>
 
