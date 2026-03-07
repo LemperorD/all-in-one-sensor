@@ -7,3 +7,6 @@
 [submodule "src/FAST_LIO_ROS2"]
 	path = src/FAST_LIO_ROS2
 	url = https://github.com/LemperorD/FAST_LIO_ROS2.git
+[submodule "src/yolo_ros"]
+	path = src/yolo_ros
+	url = https://github.com/LemperorD/yolo_ros.git
