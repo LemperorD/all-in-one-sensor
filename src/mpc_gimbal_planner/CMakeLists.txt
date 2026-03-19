@@ -12,6 +12,8 @@ find_package(ament_cmake_auto REQUIRED)
 # find_package(<dependency> REQUIRED)
 ament_auto_find_build_dependencies()
 
+find_package(ACADO REQUIRED)
+
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   # the following line skips the linter which checks for copyrights
