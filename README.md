@@ -28,3 +28,13 @@ sudo rm -rf /opt/MVS/lib/64/libusb-1.0.so.0
 ```bash
 ~/all-in-one-sensor/scripts/colconBuild.sh
 ```
+
+## 3. timesync
+
+### 3.1 PTP
+
+According by [guyueju docs](https://www.guyuehome.com/detail?id=1876198927751991297)
+
+```bash
+sudo ptp4l -m -S -i enp58s0
+```
