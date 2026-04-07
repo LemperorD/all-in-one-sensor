@@ -1,6 +1,3 @@
-[submodule "src/hik_camera_ros2_driver"]
-	path = src/hik_camera_ros2_driver
-	url = https://github.com/LemperorD/hik_camera_ros2_driver.git
 [submodule "src/livox_ros_driver2"]
 	path = src/livox_ros_driver2
 	url = https://github.com/LemperorD/livox_ros_driver2.git
@@ -10,3 +7,7 @@
 [submodule "src/yolo_ros"]
 	path = src/yolo_ros
 	url = https://github.com/LemperorD/yolo_ros.git
+[submodule "src/hik_camera_ros2_driver"]
+	path = src/hik_camera_ros2_driver
+	url = https://github.com/LemperorD/hik_camera_ros2_driver.git
+	branch = sync_board
