@@ -1,0 +1,126 @@
+syntax = "proto3";
+
+package sync_proto;
+
+// 消息类型枚举
+enum MessageID {
+    MSG_UNKNOWN = 0;
+    MSG_IMU_RAW = 1;
+    MSG_IMU = 2;
+    MSG_SYSTEM_TIME = 3;
+    MSG_TRIGGER = 4;
+    MSG_LOG = 5;
+    MSG_GPS_RAW = 6;
+    MSG_CONFIG = 7;
+}
+
+enum CfgPropID {
+  CFG_BOOL_UNKNOWN = 0;          // 默认值
+  CFG_BOOL_DEBUG_MODE = 1;
+  CFG_INT_TRIGGER_FREQ = 2;
+  CFG_BOOL_TRIGGER_EDGE = 3;
+  CFG_BOOL_TRIGGER_ONCE = 4;
+
+}
+
+// 功能配置，可以是开关或者数值
+message ConfigItem {
+  CfgPropID prop_id = 1; // 配置名称
+
+  // 使用 oneof 定义不同类型的值
+  oneof value {
+    bool bool_value = 2;   // 布尔开关
+    int32 int_value = 3; // 整数值
+    float float_value = 4; // 浮点值
+    string str_value = 5;  // 可选：字符串值
+  }
+}
+ 
+// 整个系统配置
+message Config {
+  repeated ConfigItem item = 1;
+}
+
+enum LogLevel { INFO = 0; WARN = 1; ERROR = 2; DEBUG = 3; }
+
+// IMU 原始数据
+message IMU_RAW {
+  int64 time_us = 1;       
+  double ax = 2;
+  double ay = 3;
+  double az = 4;
+
+  double gx = 5;
+  double gy = 6;
+  double gz = 7;
+}
+
+// IMU 处理后的数据
+message IMU {
+  int64 time_us = 1;
+  double ax = 2;
+  double ay = 3;
+  double az = 4;
+
+  double gx = 5;
+  double gy = 6;
+  double gz = 7;
+
+  double roll = 8;
+  double pitch = 9;
+  double yaw = 10;
+}
+
+// Trigger 消息
+message TRIGGER {
+  int64 trigger_time_us = 1;
+  int64 recv_trigger_time_us = 2;
+}
+
+// 日志消息
+message LOG {
+  int64 time = 1;          // 时间戳
+  string level = 2;        // 日志级别: INFO, WARN, ERROR, DEBUG
+  string module = 3;       // 日志来源模块
+  string message = 4;      // 日志内容
+}
+
+
+// GPS 卫星状态枚举
+enum GPSSatStatus {
+    GPS_UNKNOWN = 0;
+    GPS_FIX_NONE = 1;
+    GPS_FIX_2D = 2;
+    GPS_FIX_3D = 3;
+}
+
+// GPS 原始数据消息
+message GPS_RAW {
+    int64 time_us = 1;         // 时间戳，微秒
+    double latitude = 2;       // 纬度，度
+    double longitude = 3;      // 经度，度
+    float altitude = 4;        // 高度，米
+    float eph = 5;             // 水平精度，米
+    float epv = 6;             // 垂直精度，米
+    float vel = 7;             // 地面速度，米/秒
+    float cog = 8;             // 航向角，度
+    uint32 fix_type = 9;       // 卫星定位类型，参考 GPSSatStatus
+    uint32 satellites_visible = 10;  // 可见卫星数
+}
+
+
+
+
+// Envelope 封装所有消息
+message Envelope {
+  MessageID id = 1;
+
+  // oneof 表示一次 Envelope 只包含一种消息
+  oneof payload {
+    IMU_RAW imu_raw = 2;
+    IMU imu = 3;
+    TRIGGER trigger = 4;
+    LOG log = 5;
+    GPS_RAW gps_raw = 6;
+  }
+}

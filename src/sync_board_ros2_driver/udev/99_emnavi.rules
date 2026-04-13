@@ -1,0 +1,2 @@
+SUBSYSTEM=="tty", ATTRS{manufacturer}=="emNavi",SYMLINK+="ttyEmnv%s{product}"
+SUBSYSTEM=="tty", ATTRS{manufacturer}=="emNavi", SYMLINK+="ttyEmnv%s{product}_%s{serial}"

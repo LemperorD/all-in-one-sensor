@@ -1,0 +1,17 @@
+sync_board_node:
+  ros__parameters:
+    # Serial device settings
+    device_path: "/dev/ttyACM0"
+    baudrate: 921600
+    
+    # IMU data settings
+    imu_frame_id: "imu_link"
+    imu_publish_rate: 100.0
+    
+    # Covariance matrices (diagonal values)
+    lin_acc_cov_diagonal: [0.01, 0.01, 0.01]
+    ang_vel_cov_diagonal: [0.01, 0.01, 0.01]
+    
+    trigger_edge_rising: 1
+    trigger_mode: 2
+    trigger_fps: 60
