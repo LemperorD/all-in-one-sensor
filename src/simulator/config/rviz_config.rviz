@@ -1,0 +1,227 @@
+Panels:
+  - Class: rviz_common/Displays
+    Help Height: 78
+    Name: Displays
+    Property Tree Widget:
+      Expanded:
+        - /Global Options1
+        - /Status1
+      Splitter Ratio: 0.5
+    Tree Height: 368
+  - Class: rviz_common/Selection
+    Name: Selection
+  - Class: rviz_common/Tool Properties
+    Expanded:
+      - /2D Goal Pose1
+      - /Publish Point1
+    Name: Tool Properties
+    Splitter Ratio: 0.588679
+  - Class: rviz_common/Views
+    Expanded:
+      - /Current View1
+    Name: Views
+    Splitter Ratio: 0.5
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Alpha: 0.5
+      Cell Size: 1
+      Class: rviz_common/Grid
+      Color: 160; 160; 164
+      Enabled: true
+      Line Style:
+        Render Mode: GL_LINES
+      Name: Grid
+      Normal Cell Count: 0
+      Offset:
+        X: 0
+        Y: 0
+        Z: 0
+      Plane: XY
+      Plane Cell Count: 10
+      Reference Frame: <Fixed Frame>
+      Value: true
+    - Alpha: 1
+      Class: rviz_common/RobotModel
+      Collision Margin: 0.01
+      Enabled: true
+      Links:
+        All Links Enabled: true
+        Expanded:
+          - base
+          - pan_link
+          - tilt_link
+          - camera_link
+          - lidar_link
+        Link 'base':
+          Alpha: 1
+          Show Axes: false
+          Show Trail: false
+        Link 'camera_link':
+          Alpha: 1
+          Show Axes: true
+          Show Trail: false
+        Link 'camera_optical_frame':
+          Alpha: 1
+          Show Axes: true
+          Show Trail: false
+        Link 'lidar_link':
+          Alpha: 1
+          Show Axes: true
+          Show Trail: false
+        Link 'pan_link':
+          Alpha: 1
+          Show Axes: true
+          Show Trail: false
+        Link 'tilt_link':
+          Alpha: 1
+          Show Axes: true
+          Show Trail: false
+      Name: RobotModel
+      Robot Description: robot_description
+      TF Prefix: ""
+      Update Interval: 0
+      Value: true
+      Visual Enabled: true
+    - Class: rviz_common/TF
+      Enabled: true
+      Frame Limit: 64
+      Name: TF
+      Show Arrows: true
+      Show Axes: true
+      Show Names: true
+      Update Interval: 0
+      Value: true
+    - Alpha: 1
+      Autocompute Intensity Bounds: true
+      Autocompute Value Bounds:
+        Max Value: 10
+        Min Value: -10
+        Value: true
+      Axis: Z
+      Channel Name: rgb
+      Class: rviz_common/PointCloud2
+      Color: 255; 255; 255
+      Color Transformer: RGB Transformer
+      Decay Time: 0
+      Enabled: false
+      Invert Rainbow: false
+      Max Color: 255; 255; 255
+      Min Color: 0; 0; 0
+      Name: PointCloud2
+      Point Style: Points
+      Position Transformer: XYZ
+      Queue Size: 10
+      Selectable: true
+      Size (Pixels): 3
+      Size (m): 0.01
+      Style: Flat Squares
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Best Effort
+        Value: /lidar_points
+      Unreliable: false
+      Use Fixed Frame: true
+      Use rainbow: true
+      Value: false
+    - Alpha: 0.7
+      Class: rviz_common/Map
+      Color Scheme: map
+      Draw Behind: false
+      Enabled: false
+      Name: Map
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /map
+      Unreliable: false
+      Use Timestamp: false
+      Value: false
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: base
+    Frame Rate: 30
+  Name: root
+  Tools:
+    - Class: rviz_common/Interact
+      Hide Inactive Objects: true
+    - Class: rviz_common/MoveCamera
+    - Class: rviz_common/Select
+    - Class: rviz_common/FocusCamera
+    - Class: rviz_common/Measure
+      Class Name: rviz_common/Measure
+    - Class: rviz_common/SetInitialPose
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /initialpose
+      Unreliable: false
+    - Class: rviz_common/SetGoal
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /goal_pose
+      Unreliable: false
+    - Class: rviz_common/PublishPoint
+      Single click publishing: true
+      Topic:
+        Depth: 5
+        Durability Policy: Transient Local
+        Filter size: 10
+        History Policy: Keep Last
+        Reliability Policy: Reliable
+        Value: /clicked_point
+      Unreliable: false
+  Value: true
+  Views:
+    Current:
+      Class: rviz_common/Orbit
+      Distance: 15
+      Enable Stereo Rendering:
+        Stereo Eye Separation: 0.06
+        Stereo Focal Distance: 1
+        Swap Stereo Eyes: false
+        Value: false
+      Focal Point:
+        X: 0
+        Y: 0
+        Z: 0
+      Focal Shape Fixed Size: true
+      Focal Shape Size: 0.05
+      Invert Z Axis: false
+      Name: Current View
+      Near Clip Distance: 0.01
+      Pitch: 0.785398
+      Target Frame: <Fixed Frame>
+      Value: Orbit (rviz)
+      Yaw: 0.785398
+    Saved Views: {}
+Window Geometry:
+  Displays:
+    collapsed: false
+  Height: 1016
+  Hide Left Dock: false
+  Hide Right Dock: false
+  QMainWindow State: 000000ff00000000fd00000004000000000000016a000003e8fc0200000009fb0000001200530065006c0065006300740069006f006e00000000000000009b0000005c00fffffffb0000001e0054006f006f006c002000500072006f0070006500720074006900650073aq
+  Selection:
+    collapsed: false
+  Tool Properties:
+    collapsed: false
+  Views:
+    collapsed: false
+  Width: 1500
+  X: 0
+  Y: 27
