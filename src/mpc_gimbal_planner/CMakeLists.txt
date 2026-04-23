@@ -19,7 +19,7 @@ ament_auto_find_build_dependencies()
 find_package(ACADO REQUIRED)
 
 # MPC View Planner library
-add_library(mpc_view_planner src/mpc_view_planner.cpp)
+add_library(mpc_view_planner SHARED src/mpc_view_planner.cpp)
 target_include_directories(mpc_view_planner PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>

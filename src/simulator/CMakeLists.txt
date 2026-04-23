@@ -22,6 +22,8 @@ find_package(pcl_ros REQUIRED)
 find_package(pcl_conversions REQUIRED)
 find_package(OpenCV REQUIRED)
 
+ament_environment_hooks("${CMAKE_CURRENT_SOURCE_DIR}/env-hooks/gazebo_sim.dsv.in")
+
 # Gimbal Controller Node
 add_executable(gimbal_controller_node src/gimbal_controller_node.cpp)
 ament_target_dependencies(gimbal_controller_node
@@ -83,6 +85,9 @@ install(DIRECTORY worlds DESTINATION share/${PROJECT_NAME})
 
 # Install URDF files
 install(DIRECTORY urdf DESTINATION share/${PROJECT_NAME})
+
+# Install ignition files
+install(DIRECTORY ign DESTINATION share/${PROJECT_NAME})
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)

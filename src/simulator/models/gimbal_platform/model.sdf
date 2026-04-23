@@ -1,43 +1,45 @@
 <?xml version="1.0" ?>
-<model name="gimbal_platform">
-  <static>true</static>
-  <link name="base">
-    <inertial>
-      <mass>2.0</mass>
-      <inertia>
-        <ixx>0.05</ixx>
-        <ixy>0.0</ixy>
-        <ixz>0.0</ixz>
-        <iyy>0.05</iyy>
-        <iyz>0.0</iyz>
-        <izz>0.08</izz>
-      </inertia>
-      <pose>0 0 0.025 0 0 0</pose>
-    </inertial>
+<sdf version="1.6">
+  <model name="gimbal_platform">
+    <static>true</static>
+    <link name="base">
+      <inertial>
+        <mass>2.0</mass>
+        <inertia>
+          <ixx>0.05</ixx>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyy>0.05</iyy>
+          <iyz>0.0</iyz>
+          <izz>0.08</izz>
+        </inertia>
+        <pose>0 0 0.025 0 0 0</pose>
+      </inertial>
 
-    <collision name="collision">
-      <geometry>
-        <box>
-          <size>0.2 0.2 0.05</size>
-        </box>
-      </geometry>
-      <pose>0 0 0.025 0 0 0</pose>
-    </collision>
+      <collision name="collision">
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.05</size>
+          </box>
+        </geometry>
+        <pose>0 0 0.025 0 0 0</pose>
+      </collision>
 
-    <visual name="visual">
-      <geometry>
-        <box>
-          <size>0.2 0.2 0.05</size>
-        </box>
-      </geometry>
-      <pose>0 0 0.025 0 0 0</pose>
-      <material>
-        <script>
-          <uri>file://media/materials/scripts/gazebo.material</uri>
-          <name>Gazebo/Grey</name>
-        </script>
-      </material>
-    </visual>
-  </link>
+      <visual name="visual">
+        <geometry>
+          <box>
+            <size>0.2 0.2 0.05</size>
+          </box>
+        </geometry>
+        <pose>0 0 0.025 0 0 0</pose>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Grey</name>
+          </script>
+        </material>
+      </visual>
+    </link>
 
-</model>
+  </model>
+</sdf>

@@ -1,62 +1,64 @@
 <?xml version="1.0" ?>
-<model name="qr_code">
-  <static>false</static>
+<sdf version="1.6">
+  <model name="qr_code">
+    <static>false</static>
 
-  <link name="qr_code_link">
-    <inertial>
-      <mass>0.01</mass>
-      <inertia>
-        <ixx>0.000001</ixx>
-        <ixy>0</ixy>
-        <ixz>0</ixz>
-        <iyy>0.000001</iyy>
-        <iyz>0</iyz>
-        <izz>0.000001</izz>
-      </inertia>
-    </inertial>
+    <link name="qr_code_link">
+      <inertial>
+        <mass>0.01</mass>
+        <inertia>
+          <ixx>0.000001</ixx>
+          <ixy>0</ixy>
+          <ixz>0</ixz>
+          <iyy>0.000001</iyy>
+          <iyz>0</iyz>
+          <izz>0.000001</izz>
+        </inertia>
+      </inertial>
 
-    <collision name="collision">
-      <geometry>
-        <box>
-          <size>0.1 0.1 0.1</size>
-        </box>
-      </geometry>
-    </collision>
+      <collision name="collision">
+        <geometry>
+          <box>
+            <size>0.1 0.1 0.1</size>
+          </box>
+        </geometry>
+      </collision>
 
-    <visual name="visual">
-      <geometry>
-        <box>
-          <size>0.1 0.1 0.1</size>
-        </box>
-      </geometry>
-      <material>
-        <script>
-          <uri>file://media/materials/scripts/gazebo.material</uri>
-          <name>Gazebo/White</name>
-        </script>
-      </material>
-    </visual>
+      <visual name="visual">
+        <geometry>
+          <box>
+            <size>0.1 0.1 0.1</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/White</name>
+          </script>
+        </material>
+      </visual>
 
-    <!-- Visual for QR pattern on top face -->
-    <visual name="qr_pattern">
-      <pose>0 0 0.05 0 0 0</pose>
-      <geometry>
-        <box>
-          <size>0.09 0.09 0.001</size>
-        </box>
-      </geometry>
-      <material>
-        <script>
-          <uri>file://media/materials/scripts/gazebo.material</uri>
-          <name>Gazebo/Black</name>
-        </script>
-      </material>
-    </visual>
+      <!-- Visual for QR pattern on top face -->
+      <visual name="qr_pattern">
+        <pose>0 0 0.05 0 0 0</pose>
+        <geometry>
+          <box>
+            <size>0.09 0.09 0.001</size>
+          </box>
+        </geometry>
+        <material>
+          <script>
+            <uri>file://media/materials/scripts/gazebo.material</uri>
+            <name>Gazebo/Black</name>
+          </script>
+        </material>
+      </visual>
 
-  </link>
+    </link>
 
-  <!-- Plugin for trajectory control -->
-  <plugin name="qr_trajectory_plugin" filename="libgazebo_ros_link_attractor.so">
-  </plugin>
+    <!-- Plugin for trajectory control -->
+    <!-- <plugin name="qr_trajectory_plugin" filename="libgazebo_ros_link_attractor.so">
+    </plugin> -->
 
-</model>
+  </model>
+</sdf>

@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 """
-2D IMM-KF with CV / CA / Singer / CT models
-+ Animation
-+ Error curve plot
+2D IMM-KF WITHOUT CT MODEL (for comparison)
+Models: CV / CA / Singer
+- Same trajectory
+- Dual animation (trajectory + error)
 """
 
 import numpy as np
@@ -14,12 +15,10 @@ def generate_ground_truth(T=30.0, dt=0.1):
     t = np.arange(0, T, dt)
     pos = []
 
-    # Construct C1-continuous trajectory using line + circular arc (tangent) + line + arc
     for ti in t:
         s = 0.5 * (1 - np.cos(np.pi * ti / T))
         x = 10 * s * np.cos(0.6 * ti)
         y = 10 * s * np.sin(0.6 * ti)
-
         pos.append([x, y])
 
     return t, np.array(pos)
@@ -29,7 +28,7 @@ def add_noise(traj, noise_std=0.15):
     return traj + np.random.randn(*traj.shape) * noise_std
 
 
-# ===================== KF Base =====================
+# ===================== KF =====================
 class KF:
     def __init__(self, dim_x, dim_z):
         self.x = np.zeros(dim_x)
@@ -77,7 +76,6 @@ def create_ca(dt):
 def create_singer(dt, alpha=0.8):
     kf = KF(6, 2)
     F = np.eye(6)
-
     exp_a = np.exp(-alpha * dt)
     c1 = (1 - exp_a) / alpha
     c2 = (dt - c1) / alpha
@@ -87,30 +85,6 @@ def create_singer(dt, alpha=0.8):
         F[i, i+4] = c2
         F[i+2, i+4] = c1
         F[i+4, i+4] = exp_a
-
-    kf.F = F
-    kf.H[:, :2] = np.eye(2)
-    return kf
-
-
-def create_ct(dt, omega=0.6):
-    kf = KF(4, 2)
-    F = np.eye(4)
-
-    w = omega
-    if abs(w) < 1e-4:
-        F[0, 2] = dt
-        F[1, 3] = dt
-    else:
-        F[0, 2] = np.sin(w * dt) / w
-        F[0, 3] = -(1 - np.cos(w * dt)) / w
-        F[1, 2] = (1 - np.cos(w * dt)) / w
-        F[1, 3] = np.sin(w * dt) / w
-
-        F[2, 2] = np.cos(w * dt)
-        F[2, 3] = -np.sin(w * dt)
-        F[3, 2] = np.sin(w * dt)
-        F[3, 3] = np.cos(w * dt)
 
     kf.F = F
     kf.H[:, :2] = np.eye(2)
@@ -134,7 +108,6 @@ class IMM:
             innovation = z - model.H @ model.x
             likelihood = np.exp(-0.5 * np.linalg.norm(innovation))
             likelihoods.append(likelihood)
-
             states.append(model.x.copy())
 
         likelihoods = np.array(likelihoods)
@@ -157,12 +130,11 @@ def main():
     cv = create_cv(dt)
     ca = create_ca(dt)
     singer = create_singer(dt)
-    ct = create_ct(dt)
 
-    imm = IMM([cv, ca, singer, ct])
+    imm = IMM([cv, ca, singer])
 
     preds = []
-    cv_preds, ca_preds, sg_preds, ct_preds = [], [], [], []
+    cv_preds, ca_preds, sg_preds = [], [], []
 
     for z in meas:
         fused, states = imm.step(z)
@@ -171,65 +143,44 @@ def main():
         cv_preds.append(states[0][:2])
         ca_preds.append(states[1][:2])
         sg_preds.append(states[2][:2])
-        ct_preds.append(states[3][:2])
 
     preds = np.array(preds)
     cv_preds = np.array(cv_preds)
     ca_preds = np.array(ca_preds)
     sg_preds = np.array(sg_preds)
-    ct_preds = np.array(ct_preds)
 
-    # ===================== Error =====================
-    def compute_error(est):
-        return np.linalg.norm(est - gt, axis=1)
+    def err(est): return np.linalg.norm(est - gt, axis=1)
 
-    err_imm = compute_error(preds)
-    err_cv = compute_error(cv_preds)
-    err_ca = compute_error(ca_preds)
-    err_sg = compute_error(sg_preds)
-    err_ct = compute_error(ct_preds)
+    err_imm = err(preds)
+    err_cv = err(cv_preds)
+    err_ca = err(ca_preds)
+    err_sg = err(sg_preds)
 
-    # ===================== Dual-Window Animation (Trajectory + Error) =====================
-    fig, (ax_traj, ax_err) = plt.subplots(1, 2, figsize=(18, 7))
+    # ===================== Dual Animation =====================
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(18, 7))
 
     def update(frame):
-        ax_traj.clear()
-        ax_err.clear()
+        ax1.clear()
+        ax2.clear()
 
-        # ---- Trajectory ----
-        ax_traj.plot(gt[:frame,0], gt[:frame,1], label='Ground Truth')
-        ax_traj.scatter(meas[:frame,0], meas[:frame,1], s=10, label='Measurement')
+        ax1.plot(gt[:frame,0], gt[:frame,1], label='GT')
+        ax1.scatter(meas[:frame,0], meas[:frame,1], s=10)
+        ax1.plot(cv_preds[:frame,0], cv_preds[:frame,1], '--', label='CV')
+        ax1.plot(ca_preds[:frame,0], ca_preds[:frame,1], '--', label='CA')
+        ax1.plot(sg_preds[:frame,0], sg_preds[:frame,1], '--', label='Singer')
+        ax1.plot(preds[:frame,0], preds[:frame,1], linewidth=2.5, label='IMM')
+        ax1.legend(); ax1.grid()
 
-        ax_traj.plot(cv_preds[:frame,0], cv_preds[:frame,1], '--', label='CV')
-        ax_traj.plot(ca_preds[:frame,0], ca_preds[:frame,1], '--', label='CA')
-        ax_traj.plot(sg_preds[:frame,0], sg_preds[:frame,1], '--', label='Singer')
-        ax_traj.plot(ct_preds[:frame,0], ct_preds[:frame,1], '--', label='CT')
-
-        ax_traj.plot(preds[:frame,0], preds[:frame,1], linewidth=2, label='IMM')
-
-        ax_traj.set_title('Trajectory')
-        ax_traj.set_xlabel('X')
-        ax_traj.set_ylabel('Y')
-        ax_traj.legend()
-        ax_traj.grid(True)
-
-        # ---- Error ----
-        ax_err.plot(t[:frame], err_cv[:frame], '--', linewidth=1, label='CV Error')
-        ax_err.plot(t[:frame], err_ca[:frame], '--', linewidth=1, label='CA Error')
-        ax_err.plot(t[:frame], err_sg[:frame], '--', linewidth=1, label='Singer Error')
-        ax_err.plot(t[:frame], err_ct[:frame], '--', linewidth=1, label='CT Error')
-        ax_err.plot(t[:frame], err_imm[:frame], linewidth=2.5, label='IMM Error')
-
-        ax_err.set_title('Error')
-        ax_err.set_xlabel('Time (s)')
-        ax_err.set_ylabel('Position Error')
-        ax_err.legend()
-        ax_err.grid(True)
+        ax2.plot(t[:frame], err_cv[:frame], '--', linewidth=1, label='CV')
+        ax2.plot(t[:frame], err_ca[:frame], '--', linewidth=1, label='CA')
+        ax2.plot(t[:frame], err_sg[:frame], '--', linewidth=1, label='Singer')
+        ax2.plot(t[:frame], err_imm[:frame], linewidth=2.5, label='IMM')
+        ax2.legend(); ax2.grid()
 
     ani = animation.FuncAnimation(fig, update, frames=len(t), interval=100)
-    ani.save('/tmp/immkf_dual.gif', writer='pillow', dpi=200)
+    ani.save('/tmp/immkf.gif', writer='pillow', dpi=200)
 
-    print('Saved dual animation: /tmp/immkf_dual.gif')
+    print('Saved dual animation: /tmp/immkf.gif')
 
 
 if __name__ == '__main__':

@@ -1,49 +1,83 @@
+# Copyright 2025 Lihan Chen
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
 import os
+
+from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import SetEnvironmentVariable
+from launch.actions import (
+    DeclareLaunchArgument,
+    IncludeLaunchDescription,
+)
+from launch.launch_description_sources import PythonLaunchDescriptionSource
+from launch.substitutions import LaunchConfiguration, TextSubstitution
 from launch_ros.actions import Node
-from launch_ros.substitutions import FindPackageShare
+
 
 def generate_launch_description():
+    pkg_simulator = get_package_share_directory("simulator")
 
-    pkg_path = FindPackageShare('simulator').find('simulator')
+    world_sdf_path = LaunchConfiguration("world_sdf_path")
+    ign_config_path = LaunchConfiguration("ign_config_path")
 
-    world_path = os.path.join(pkg_path, 'worlds', 'gimbal_sim.world')
-
-    # 启动 gz 仿真
-    gz_sim = Node(
-        package='ros_gz_sim',
-        executable='create',
-        arguments=[world_path],
-        output='screen'
+    declare_world_sdf_path = DeclareLaunchArgument(
+        "world_sdf_path",
+        default_value=os.path.join(
+            pkg_simulator, "worlds", "gimbal_sim.sdf"
+        ),
+        description="Path to the world SDF file",
     )
 
-    # spawn gimbal（建议改成 sdf！）
-    spawn_gimbal = Node(
-        package='ros_gz_sim',
-        executable='create',
-        arguments=[
-            '-name', 'gimbal_platform',
-            '-file', os.path.join(pkg_path, 'urdf', 'gimbal_platform.urdf'),
-            '-x', '0', '-y', '0', '-z', '0'
+    declare_ign_config_path = DeclareLaunchArgument(
+        "ign_config_path",
+        default_value=os.path.join(pkg_simulator, "ign", "gui.config"),
+        description="Path to the Gazebo Sim GUI configuration file",
+    )
+
+    # Launch Gazebo Sim
+    gazebo_sim = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("ros_gz_sim"), "launch", "gz_sim.launch.py"
+            )
+        ),
+        launch_arguments=[
+            ("gz_version", "7"),
+            ("gz_args", [
+                world_sdf_path,
+                TextSubstitution(text=" --gui-config "),
+                ign_config_path,
+                TextSubstitution(text=" -v 2"),
+            ]),
         ],
-        output='screen'
     )
 
-    # spawn target
-    spawn_target = Node(
-        package='ros_gz_sim',
-        executable='create',
+    # Bridge clock
+    robot_ign_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
         arguments=[
-            '-name', 'qr_code_target',
-            '-file', os.path.join(pkg_path, 'models/qr_code_target/model.sdf'),
-            '-x', '5', '-y', '0', '-z', '2'
+            "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
         ],
-        output='screen'
+        output="screen",
     )
 
-    return LaunchDescription([
-        gz_sim,
-        spawn_gimbal,
-        spawn_target
-    ])
+    ld = LaunchDescription()
+
+    ld.add_action(declare_world_sdf_path)
+    ld.add_action(declare_ign_config_path)
+    ld.add_action(gazebo_sim)
+    ld.add_action(robot_ign_bridge)
+
+    return ld

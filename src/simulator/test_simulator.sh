@@ -81,7 +81,8 @@ run_test "Full system launch file" "test -f $SIMULATOR_SHARE/launch/full_system.
 
 # Test 8: Check world files
 echo -e "${BLUE}--- World File Tests ---${NC}"
-run_test "Gazebo world file" "test -f $SIMULATOR_SHARE/worlds/gimbal_sim.world" "success"
+run_test "Gazebo Sim SDF file" "test -f $SIMULATOR_SHARE/worlds/gimbal_sim.sdf" "success"
+run_test "Gazebo Sim GUI config" "test -f $SIMULATOR_SHARE/ign/gui.config" "success"
 
 # Test 9: Check ROS topic infrastructure
 echo -e "${BLUE}--- ROS Topic Tests ---${NC}"
