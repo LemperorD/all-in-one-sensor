@@ -1,17 +1,3 @@
-# Copyright 2025 Lihan Chen
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import os
 
 from ament_index_python.packages import get_package_share_directory
@@ -34,50 +20,47 @@ def generate_launch_description():
     declare_world_sdf_path = DeclareLaunchArgument(
         "world_sdf_path",
         default_value=os.path.join(
-            pkg_simulator, "worlds", "gimbal_sim.sdf"
+            pkg_simulator, "resource", "worlds", "gimbal_sim.sdf"
         ),
-        description="Path to the world SDF file",
+        description="Path to the gimbal sim world SDF file",
     )
 
     declare_ign_config_path = DeclareLaunchArgument(
         "ign_config_path",
-        default_value=os.path.join(pkg_simulator, "ign", "gui.config"),
-        description="Path to the Gazebo Sim GUI configuration file",
+        default_value=os.path.join(pkg_simulator, "resource", "ign", "gui.config"),
+        description="Path to the Ignition Gazebo GUI configuration file",
     )
 
-    # Launch Gazebo Sim
-    gazebo_sim = IncludeLaunchDescription(
+    # Launch Gazebo simulator
+    gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
                 get_package_share_directory("ros_gz_sim"), "launch", "gz_sim.launch.py"
             )
         ),
-        launch_arguments=[
-            ("gz_version", "7"),
-            ("gz_args", [
+        launch_arguments={
+            "gz_version": "6",
+            "gz_args": [
                 world_sdf_path,
                 TextSubstitution(text=" --gui-config "),
                 ign_config_path,
-                TextSubstitution(text=" -v 2"),
-            ]),
-        ],
+            ],
+        }.items(),
     )
 
-    # Bridge clock
     robot_ign_bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
         arguments=[
             "/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
         ],
-        output="screen",
     )
 
     ld = LaunchDescription()
 
     ld.add_action(declare_world_sdf_path)
     ld.add_action(declare_ign_config_path)
-    ld.add_action(gazebo_sim)
+    ld.add_action(gazebo)
     ld.add_action(robot_ign_bridge)
 
     return ld
