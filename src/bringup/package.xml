@@ -1,0 +1,44 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>bringup</name>
+  <version>0.1.0</version>
+  <description>系统启动和配置管理包，包含仿真和现实环境的启动文件、配置和参数管理</description>
+  <maintainer email="ld2382619813@163.com">Lihan Chen</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <!-- Launch和配置依赖 -->
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>nav2_common</exec_depend>
+
+  <!-- 导航栈依赖 -->
+  <exec_depend>nav2_core</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>nav2_lifecycle_manager</exec_depend>
+
+  <!-- SLAM依赖 -->
+  <exec_depend>fast_lio</exec_depend>
+
+  <!-- 仿真依赖 -->
+  <exec_depend>simulator</exec_depend>
+
+  <!-- 驱动依赖 -->
+  <exec_depend>hik_camera_ros2_driver</exec_depend>
+  <exec_depend>serial_communication</exec_depend>
+  <exec_depend>sync_board_ros2_driver</exec_depend>
+
+  <!-- 其他依赖 -->
+  <exec_depend>yolo_ros</exec_depend>
+  <exec_depend>rviz2</exec_depend>
+
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>ament_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>
