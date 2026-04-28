@@ -1,30 +1,16 @@
-// Copyright 2021 RoboMaster-OSS
-//
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-//     http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
-#include "rmoss_gz_base/gimbal_controller.hpp"
+#include "gz_gimbal/gimbal_controller.hpp"
 
 #include <memory>
 #include <string>
 #include <algorithm>
 
-namespace rmoss_gz_base
+namespace gz_gimbal
 {
 
 GimbalController::GimbalController(
   rclcpp::Node::SharedPtr node,
-  Actuator<rmoss_interfaces::msg::Gimbal>::SharedPtr gimbal_vel_actuator,
-  Sensor<rmoss_interfaces::msg::Gimbal>::SharedPtr gimbal_pos_sensor,
+  Actuator<simulator::msg::Gimbal>::SharedPtr gimbal_vel_actuator,
+  Sensor<simulator::msg::Gimbal>::SharedPtr gimbal_pos_sensor,
   const std::string & controller_name)
 : node_(node), gimbal_vel_actuator_(gimbal_vel_actuator), gimbal_pos_sensor_(gimbal_pos_sensor)
 {
@@ -146,4 +132,4 @@ void GimbalController::reset()
   target_yaw_ = 0;
 }
 
-}  // namespace rmoss_gz_base
+}  // namespace gz_gimbal
