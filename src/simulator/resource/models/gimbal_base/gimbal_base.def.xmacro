@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <sdf version="1.7">
     <!--macro defination: gimbal_base-->
-    <xmacro_define_block name="gimbal_base" params="sticker_type">
+    <xmacro_define_block name="gimbal_base">
         <!--chassis-->
         <link name="chassis" >
             <inertial>
@@ -30,6 +30,7 @@
                 </limit>
             </axis>
         </joint>
+        <!--gimbal yaw module-->
         <link name="gimbal_yaw" >
             <pose relative_to="gimbal_yaw_joint">0 0 0 0 0 0</pose>
             <inertial>

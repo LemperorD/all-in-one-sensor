@@ -43,11 +43,11 @@ def generate_launch_description():
     urdf_generator.parse_from_sdf_string(robot_xml)
     robot_urdf_xml = urdf_generator.to_string()
 
-    # replace the <robot_name> in the bridge config file
-    aft_replace_ros_bridge_params = ReplaceString(
-        source_file=bridge_config,
-        replacements={"<robot_name>": robot["name"]},
-    )
+    # # replace the <robot_name> in the bridge config file
+    # aft_replace_ros_bridge_params = ReplaceString(
+    #     source_file=bridge_config,
+    #     replacements={"<robot_name>": robot["name"]},
+    # )
 
     spawn_robot = Node(
         package="ros_gz_sim",
@@ -60,20 +60,19 @@ def generate_launch_description():
             "-allow_renaming",
             "true",
             "-x",
-            0.0,
+            "0.0",
             "-y",
-            0.0,
+            "0.0",
             "-z",
-            0.0,
+            "0.0",
             "-Y",
-            0.0
+            "0.0",
         ],
     )
 
     robot_state_publisher = Node(
         package="robot_state_publisher",
         executable="robot_state_publisher",
-        namespace=robot["name"],
         remappings=remappings,
         parameters=[
             {
@@ -86,8 +85,7 @@ def generate_launch_description():
     robot_ign_bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
-        namespace=robot["name"],
-        parameters=[{"config_file": aft_replace_ros_bridge_params}],
+        parameters=[{"config_file": bridge_config}],
     )
 
     # Execute service call after spawning robots
@@ -104,14 +102,13 @@ def generate_launch_description():
             "ignition.msgs.Boolean",
             "--timeout",
             "2000",
-            "--req",
-            f'data: "{robot["name"]}"',
+            # "--req",
+            # f'data: "{robot["name"]}"',
         ],
         output="screen",
     )
 
     ld.add_action(spawn_robot)
-    ld.add_action(robot_base)
     ld.add_action(robot_state_publisher)
     ld.add_action(robot_ign_bridge)
     ld.add_action(set_performer_service)
