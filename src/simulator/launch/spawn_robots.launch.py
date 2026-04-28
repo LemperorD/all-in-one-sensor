@@ -1,17 +1,3 @@
-# Copyright 2025 Lihan Chen
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import os
 
 import yaml
@@ -48,87 +34,86 @@ def generate_launch_description():
 
     ld = LaunchDescription()
 
-    for robot in robots:
-        # Generate SDF from xmacro
-        xmacro.generate({"global_initial_color": robot["color"]})
-        robot_xml = xmacro.to_string()
+    # Generate SDF from xmacro
+    xmacro.generate()
+    robot_xml = xmacro.to_string()
 
-        # Generate URDF from SDF
-        urdf_generator = UrdfGenerator()
-        urdf_generator.parse_from_sdf_string(robot_xml)
-        robot_urdf_xml = urdf_generator.to_string()
+    # Generate URDF from SDF
+    urdf_generator = UrdfGenerator()
+    urdf_generator.parse_from_sdf_string(robot_xml)
+    robot_urdf_xml = urdf_generator.to_string()
 
-        # replace the <robot_name> in the bridge config file
-        aft_replace_ros_bridge_params = ReplaceString(
-            source_file=bridge_config,
-            replacements={"<robot_name>": robot["name"]},
-        )
+    # replace the <robot_name> in the bridge config file
+    aft_replace_ros_bridge_params = ReplaceString(
+        source_file=bridge_config,
+        replacements={"<robot_name>": robot["name"]},
+    )
 
-        spawn_robot = Node(
-            package="ros_gz_sim",
-            executable="create",
-            arguments=[
-                "-string",
-                robot_xml,
-                "-name",
-                robot["name"],
-                "-allow_renaming",
-                "true",
-                "-x",
-                robot["x_pose"],
-                "-y",
-                robot["y_pose"],
-                "-z",
-                robot["z_pose"],
-                "-Y",
-                robot["yaw"],
-            ],
-        )
+    spawn_robot = Node(
+        package="ros_gz_sim",
+        executable="create",
+        arguments=[
+            "-string",
+            robot_xml,
+            "-name",
+            "all_in_one_sensor",
+            "-allow_renaming",
+            "true",
+            "-x",
+            0.0,
+            "-y",
+            0.0,
+            "-z",
+            0.0,
+            "-Y",
+            0.0
+        ],
+    )
 
-        robot_state_publisher = Node(
-            package="robot_state_publisher",
-            executable="robot_state_publisher",
-            namespace=robot["name"],
-            remappings=remappings,
-            parameters=[
-                {
-                    "use_sim_time": True,
-                    "robot_description": robot_urdf_xml,
-                }
-            ],
-        )
+    robot_state_publisher = Node(
+        package="robot_state_publisher",
+        executable="robot_state_publisher",
+        namespace=robot["name"],
+        remappings=remappings,
+        parameters=[
+            {
+                "use_sim_time": True,
+                "robot_description": robot_urdf_xml,
+            }
+        ],
+    )
 
-        robot_ign_bridge = Node(
-            package="ros_gz_bridge",
-            executable="parameter_bridge",
-            namespace=robot["name"],
-            parameters=[{"config_file": aft_replace_ros_bridge_params}],
-        )
+    robot_ign_bridge = Node(
+        package="ros_gz_bridge",
+        executable="parameter_bridge",
+        namespace=robot["name"],
+        parameters=[{"config_file": aft_replace_ros_bridge_params}],
+    )
 
-        # Execute service call after spawning robots
-        # https://gazebosim.org/api/gazebo/6.9/levels.html#Runtime-performers
-        set_performer_service = ExecuteProcess(
-            cmd=[
-                "ign",
-                "service",
-                "-s",
-                "/world/default/level/set_performer",
-                "--reqtype",
-                "ignition.msgs.StringMsg",
-                "--reptype",
-                "ignition.msgs.Boolean",
-                "--timeout",
-                "2000",
-                "--req",
-                f'data: "{robot["name"]}"',
-            ],
-            output="screen",
-        )
+    # Execute service call after spawning robots
+    # https://gazebosim.org/api/gazebo/6.9/levels.html#Runtime-performers
+    set_performer_service = ExecuteProcess(
+        cmd=[
+            "ign",
+            "service",
+            "-s",
+            "/world/default/level/set_performer",
+            "--reqtype",
+            "ignition.msgs.StringMsg",
+            "--reptype",
+            "ignition.msgs.Boolean",
+            "--timeout",
+            "2000",
+            "--req",
+            f'data: "{robot["name"]}"',
+        ],
+        output="screen",
+    )
 
-        ld.add_action(spawn_robot)
-        ld.add_action(robot_base)
-        ld.add_action(robot_state_publisher)
-        ld.add_action(robot_ign_bridge)
-        ld.add_action(set_performer_service)
+    ld.add_action(spawn_robot)
+    ld.add_action(robot_base)
+    ld.add_action(robot_state_publisher)
+    ld.add_action(robot_ign_bridge)
+    ld.add_action(set_performer_service)
 
     return ld
