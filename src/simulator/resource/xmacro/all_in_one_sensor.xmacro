@@ -1,0 +1,42 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+    <!--include defination-->
+    <xmacro_include uri="model://mid70/model.sdf.xmacro" />
+    <xmacro_include uri="model://gimbal_base/gimbal_base.def.xmacro" />
+    <xmacro_include uri="model://industrial_camera/model.sdf.xmacro" />
+    <!-- gimbal_pitch 相对于 gimbal_yaw 的高度差 -->
+    <xmacro_define_value name="gimbal_pitch_height" value="0.355" />
+
+    <!--pb2025_sentry_robot model-->
+    <model name="all_in_one_sensor">
+
+        <pose>0 0 0 0 0 0</pose>
+        <!--livox-->
+        <xmacro_block name="livox" prefix="front_" parent="chassis" pose="0.225 0 0.107 ${-pi/18} 0 ${-pi/2}" update_rate="20" samples="1875"/>
+        <!--industrial camera-->
+        <xmacro_block name="industrial_camera" prefix="front_" parent="gimbal_pitch" pose="0.1 0 0.045 0 0 0" update_rate="30" horizontal_fov="1" width="1920" height="1080"/>
+
+        <!--plugins-->
+        <!-- https://github.com/gazebosim/gz-sim/blob/ign-gazebo6/src/systems -->
+
+        <!--plugin for joint state sensor-->
+        <plugin filename="ignition-gazebo-joint-state-publisher-system" name="ignition::gazebo::systems::JointStatePublisher">
+        </plugin>
+
+        <!--plugin for gimbal control-->
+        <plugin filename="ignition-gazebo-joint-controller-system" name="ignition::gazebo::systems::JointController">
+            <joint_name>gimbal_yaw_joint</joint_name>
+            <use_force_commands>false</use_force_commands>
+            <p_gain>0.2</p_gain>
+            <i_gain>0.01</i_gain>
+        </plugin>
+
+        <plugin filename="ignition-gazebo-joint-controller-system" name="ignition::gazebo::systems::JointController">
+            <joint_name>gimbal_pitch_joint</joint_name>
+            <use_force_commands>false</use_force_commands>
+            <p_gain>1</p_gain>
+            <i_gain>0.01</i_gain>
+        </plugin>
+
+    </model>
+</sdf>

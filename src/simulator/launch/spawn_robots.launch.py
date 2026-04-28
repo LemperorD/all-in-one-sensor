@@ -39,17 +39,9 @@ def generate_launch_description():
         pkg_simulator,
         "resource",
         "xmacro",
-        "gimbal.sdf.xmacro",
+        "all_in_one_sensor.xmacro",
     )
     bridge_config = os.path.join(pkg_simulator, "config", "ros_gz_bridge.yaml")
-    robot_config = os.path.join(pkg_simulator, "config", "base_params.yaml")
-
-    # Get spawn robot init pose
-    gz_world_path = os.path.join(pkg_simulator, "config", "gz_world.yaml")
-    with open(gz_world_path) as file:
-        config = yaml.safe_load(file)
-        selected_world = config.get("world")
-        robots = config["robots"].get(selected_world)
 
     xmacro = XMLMacro4sdf()
     xmacro.set_xml_file(robot_xmacro_path)

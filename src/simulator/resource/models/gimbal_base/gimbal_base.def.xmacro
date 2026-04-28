@@ -1,0 +1,81 @@
+<?xml version="1.0"?>
+<sdf version="1.7">
+    <!--macro defination: gimbal_base-->
+    <xmacro_define_block name="gimbal_base" params="sticker_type">
+        <!--chassis-->
+        <link name="chassis" >
+            <inertial>
+                <pose>0 0 0.055 0 0 0</pose>
+                <xmacro_block name="inertia_box"  m="15.0" x="0.36" y="0.24" z="0.13"/>
+            </inertial>
+            <visual name="chassis_visual">
+                <xmacro_block name="geometry_mesh" uri="model://gimbal_base/meshes/chassis_base.dae"/>
+            </visual>
+            <collision name="chassis_base_collision">
+                <pose>0 0 0.045 0 0 0</pose>
+                <xmacro_block name="geometry_box" x="0.36" y="0.24" z="0.13"/>
+            </collision>
+        </link>
+        <joint name="gimbal_yaw_joint" type="revolute">
+            <pose relative_to='chassis'>0 0 0.1376 0 0 0</pose>
+            <parent>chassis</parent>
+            <child>gimbal_yaw</child>
+            <axis>
+                <xyz>0 0 1</xyz>
+                <limit>
+                    <effort>100</effort>
+					<velocity>50</velocity>
+					<lower>-1.79769e+308</lower>
+					<upper>1.79769e+308</upper>
+                </limit>
+            </axis>
+        </joint>
+        <link name="gimbal_yaw" >
+            <pose relative_to="gimbal_yaw_joint">0 0 0 0 0 0</pose>
+            <inertial>
+                <pose>0 0 0.06 0 0 0</pose>
+                <xmacro_block name="inertia_cylinder"  m="1.0" r="0.05" l="0.17"/>
+            </inertial>
+            <visual name="visual">
+                <xmacro_block name="geometry_mesh" uri="model://gimbal_base/meshes/gimbal_yaw.dae"/>
+            </visual>
+            <collision name="collision">
+                <pose>0 0 0.0885 0 0 0</pose>
+                <xmacro_block name="geometry_box" x="0.065" y="0.117" z="0.177"/>
+            </collision>
+        </link>
+        <!--gimbal pitch module-->
+        <joint name="gimbal_pitch_joint" type="revolute">
+            <pose relative_to='gimbal_yaw'>0 0.004 0.16 0 0 0</pose>
+            <parent>gimbal_yaw</parent>
+            <child>gimbal_pitch</child>
+            <axis>
+                <xyz>0 1 0</xyz>
+                <limit>
+                    <effort>100</effort>
+                    <lower>${-3.14*0.25}</lower>
+                    <upper>${3.14*0.18}</upper>
+					<velocity>50</velocity>
+                </limit>
+            </axis>
+        </joint>
+        <link name="gimbal_pitch" >
+            <pose relative_to="gimbal_pitch_joint">0 0 0 0 0 0</pose>
+            <inertial>
+                <pose>0.02 0 0 0 0 0</pose>
+                <xmacro_block name="inertia_box"  m="0.5" x="0.25" y="0.09" z="0.10" />
+            </inertial>
+            <visual name="visual">
+                <xmacro_block name="geometry_mesh" uri="model://gimbal_base/meshes/gimbal_pitch.dae"/>
+            </visual>
+            <collision name="collision_main">
+                <pose>0.015 0 0 0 0 0</pose>
+                <xmacro_block name="geometry_box"  x="0.1" y="0.0915" z="0.08"/>
+            </collision>
+            <collision name="collision_box">
+                <pose>-0.011 0 0.043 0 0 0</pose>
+                <xmacro_block name="geometry_box"  x="0.14801" y="0.07" z="0.065"/>
+            </collision>
+        </link>
+    </xmacro_define_block>
+</sdf>
