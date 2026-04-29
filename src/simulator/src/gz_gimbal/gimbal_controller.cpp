@@ -23,19 +23,19 @@ GimbalController::GimbalController(
   set_yaw_pid(yaw_pid_param_);
   // sensor callback
   gimbal_pos_sensor->add_callback(
-    [this](const rmoss_interfaces::msg::Gimbal & data, const rclcpp::Time & /*stamp*/) {
+    [this](const simulator::msg::Gimbal & data, const rclcpp::Time & /*stamp*/) {
       cur_yaw_ = data.yaw;
       cur_pitch_ = data.pitch;
     });
   // ros pub and sub
   using namespace std::placeholders;
-  auto rmoss_gimbal_cmd_topic = "robot_base/gimbal_cmd";
-  auto rmoss_gimbal_state_topic = "robot_base/gimbal_state";
+  auto gimbal_cmd_topic = "robot_base/gimbal_cmd";
+  auto gimbal_state_topic = "robot_base/gimbal_state";
   auto gimbal_joint_cmd_topic = "cmd_gimbal_joint";
-  rmoss_gimbal_state_pub_ = node_->create_publisher<rmoss_interfaces::msg::Gimbal>(
-    rmoss_gimbal_state_topic, 10);
-  rmoss_gimbal_cmd_sub_ = node_->create_subscription<rmoss_interfaces::msg::GimbalCmd>(
-    rmoss_gimbal_cmd_topic, 10, std::bind(&GimbalController::gimbal_cb, this, _1));
+  gimbal_state_pub_ = node_->create_publisher<simulator::msg::Gimbal>(
+    gimbal_state_topic, 10);
+  gimbal_cmd_sub_ = node_->create_subscription<simulator::msg::GimbalCmd>(
+    gimbal_cmd_topic, 10, std::bind(&GimbalController::gimbal_cb, this, _1));
   ros_gimbal_cmd_sub_ = node_->create_subscription<sensor_msgs::msg::JointState>(
     gimbal_joint_cmd_topic, 10, std::bind(&GimbalController::gimbal_joint_cb, this, _1));
   // timer
@@ -52,7 +52,7 @@ GimbalController::GimbalController(
 
 void GimbalController::update()
 {
-  rmoss_interfaces::msg::Gimbal cmd;
+  simulator::msg::Gimbal cmd;
   // pid for pitch
   double pitch_err = cur_pitch_ - target_pitch_;
   cmd.pitch = picth_pid_.Update(pitch_err, pid_period_);
@@ -65,10 +65,10 @@ void GimbalController::update()
 
 void GimbalController::gimbal_state_timer_cb()
 {
-  rmoss_interfaces::msg::Gimbal gimbal_pos;
+  simulator::msg::Gimbal gimbal_pos;
   gimbal_pos.pitch = cur_pitch_;
   gimbal_pos.yaw = cur_yaw_;
-  rmoss_gimbal_state_pub_->publish(gimbal_pos);
+  gimbal_state_pub_->publish(gimbal_pos);
 }
 
 void GimbalController::gimbal_joint_cb(const sensor_msgs::msg::JointState::SharedPtr msg)
@@ -90,7 +90,7 @@ void GimbalController::gimbal_joint_cb(const sensor_msgs::msg::JointState::Share
   target_pitch_ = std::clamp(target_pitch_, -1.0, 1.0);
 }
 
-void GimbalController::gimbal_cb(const rmoss_interfaces::msg::GimbalCmd::SharedPtr msg)
+void GimbalController::gimbal_cb(const simulator::msg::GimbalCmd::SharedPtr msg)
 {
   // for pitch
   if (msg->pitch_type == msg->ABSOLUTE_ANGLE) {

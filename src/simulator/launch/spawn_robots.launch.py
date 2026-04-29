@@ -27,7 +27,12 @@ def generate_launch_description():
         "xmacro",
         "all_in_one_sensor.xmacro",
     )
+
     bridge_config = os.path.join(pkg_simulator, "config", "ros_gz_bridge.yaml")
+    aft_replace_ros_bridge_params = ReplaceString(
+        source_file=bridge_config,
+        replacements={"<robot_name>": "all_in_one_sensor"},
+    )
 
     xmacro = XMLMacro4sdf()
     xmacro.set_xml_file(robot_xmacro_path)
@@ -85,7 +90,7 @@ def generate_launch_description():
     robot_ign_bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
-        parameters=[{"config_file": bridge_config}],
+        parameters=[{"config_file": aft_replace_ros_bridge_params}],
     )
 
     # Execute service call after spawning robots
@@ -102,8 +107,8 @@ def generate_launch_description():
             "ignition.msgs.Boolean",
             "--timeout",
             "2000",
-            # "--req",
-            # f'data: "{robot["name"]}"',
+            "--req",
+            f'data: "all_in_one_sensor"',
         ],
         output="screen",
     )

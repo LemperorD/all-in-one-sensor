@@ -1,13 +1,10 @@
-#ifndef RMOSS_GZ_BASE__HARDWARE_INTERFACE_HPP_
-#define RMOSS_GZ_BASE__HARDWARE_INTERFACE_HPP_
+#ifndef HARDWARE_INTERFACE_HPP_
+#define HARDWARE_INTERFACE_HPP_
 
 #include <memory>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
-
-namespace rmoss_gz_base
-{
 
 template<class DataT>
 class Actuator
@@ -48,6 +45,4 @@ public:
   std::vector<SensorCallback<DataT>> callbacks_;
 };
 
-}  // namespace rmoss_gz_base
-
-#endif  // RMOSS_GZ_BASE__HARDWARE_INTERFACE_HPP_
+#endif  // HARDWARE_INTERFACE_HPP_
