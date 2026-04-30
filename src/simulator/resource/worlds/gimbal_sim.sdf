@@ -11,6 +11,14 @@
     <plugin filename="libignition-gazebo-user-commands-system.so" name="ignition::gazebo::systems::UserCommands">
     </plugin>
 
+    <!-- Generates rendering sensor data -->
+    <plugin filename="libignition-gazebo-sensors-system.so" name="ignition::gazebo::systems::Sensors">
+      <render_engine>ogre</render_engine>
+    </plugin>
+
+    <plugin filename="libignition-gazebo-imu-system.so" name="ignition::gazebo::systems::Imu">
+    </plugin>
+
     <!-- Light -->
     <light type='directional' name='direct_light'>
       <cast_shadows>false</cast_shadows>
