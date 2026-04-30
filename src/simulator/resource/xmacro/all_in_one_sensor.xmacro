@@ -4,6 +4,7 @@
     <xmacro_include uri="model://mid70/model.sdf.xmacro" />
     <xmacro_include uri="model://gimbal_base/gimbal_base.def.xmacro" />
     <xmacro_include uri="model://industrial_camera/model.sdf.xmacro" />
+    <xmacro_include uri="model://rm21_speed_monitor_module/rm21_speed_monitor_module.def.xmacro" />
     <!-- gimbal_pitch 相对于 gimbal_yaw 的高度差 -->
     <xmacro_define_value name="gimbal_pitch_height" value="0.355" />
 
@@ -17,6 +18,8 @@
         <xmacro_block name="livox" prefix="front_" parent="gimbal_pitch" pose="0.225 0 0.107 ${-pi/18} 0 ${-pi/2}" update_rate="20" samples="1875"/>
         <!--industrial camera-->
         <xmacro_block name="industrial_camera" prefix="front_" parent="gimbal_pitch" pose="0.1 0 0.045 0 0 0" update_rate="30" horizontal_fov="1" width="1920" height="1080"/>
+        <!--speed monitor-->
+        <xmacro_block name="speed_monitor_17mm" suffix="" parent="gimbal_pitch" pose="0.07 0 0 0 0 0"/>
 
         <!--plugins-->
         <!-- https://github.com/gazebosim/gz-sim/blob/ign-gazebo6/src/systems -->
