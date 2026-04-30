@@ -33,6 +33,7 @@ def generate_launch_description():
         source_file=bridge_config,
         replacements={"<robot_name>": "all_in_one_sensor"},
     )
+    robot_config = os.path.join(pkg_simulator, "config", "base_params.yaml")
 
     xmacro = XMLMacro4sdf()
     xmacro.set_xml_file(robot_xmacro_path)
@@ -67,6 +68,13 @@ def generate_launch_description():
             "-Y",
             "0.0",
         ],
+    )
+
+    robot_base = Node(
+        package="simulator",
+        executable="gz_gimbal",
+        namespace="all_in_one_sensor",
+        parameters=[robot_config, {"robot_name": "all_in_one_sensor"}],
     )
 
     robot_state_publisher = Node(
@@ -108,6 +116,7 @@ def generate_launch_description():
     )
 
     ld.add_action(spawn_robot)
+    ld.add_action(robot_base)
     ld.add_action(robot_state_publisher)
     ld.add_action(robot_ign_bridge)
     ld.add_action(set_performer_service)

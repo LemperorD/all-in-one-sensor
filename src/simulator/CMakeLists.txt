@@ -104,6 +104,11 @@ add_executable(gz_gimbal src/gz_gimbal/gz_gimbal_main.cpp)
 target_link_libraries(gz_gimbal gz_gimbal_node)
 rclcpp_components_register_nodes(gz_gimbal_node "gz_gimbal::GzGimbalNode")
 
+install(TARGETS
+      gz_gimbal
+  DESTINATION lib/${PROJECT_NAME}
+)
+
 ament_auto_package(
   INSTALL_TO_SHARE
   resource

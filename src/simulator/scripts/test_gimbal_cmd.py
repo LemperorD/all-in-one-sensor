@@ -7,7 +7,7 @@ else:
     import tty
 
 import rclpy
-from rmoss_interfaces.msg import GimbalCmd
+from simulator.msg import GimbalCmd
 
 msg = """
 This node takes keypresses from the keyboard and publishes them
@@ -61,7 +61,7 @@ def main():
     settings = saveTerminalSettings()
     rclpy.init()
     node = rclpy.create_node('control_gimbal_test')
-    pub = node.create_publisher(GimbalCmd, 'gimbal_cmd', 10)
+    pub = node.create_publisher(GimbalCmd, '/all_in_one_sensor/robot_base/gimbal_cmd', 10)
     print(msg)
     pitch=yaw=0.0
     da=0.05
