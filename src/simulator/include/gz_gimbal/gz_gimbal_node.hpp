@@ -7,6 +7,7 @@
   
 #include "gz_gimbal/gz_gimbal_actuator.hpp"
 #include "gz_gimbal/gz_gimbal_encoder.hpp"
+#include "gz_gimbal/gz_gimbal_imu.hpp"
 #include "gz_gimbal/gimbal_controller.hpp"
 #include "gz_gimbal/pid.hpp"
 
@@ -30,6 +31,7 @@ private:
   std::shared_ptr<gz_gimbal::IgnGimbalActuator> gimbal_vel_actuator_;
   // ign sensor moudule
   std::shared_ptr<gz_gimbal::IgnGimbalEncoder> gz_gimbal_encoder_;
+  std::shared_ptr<gz_gimbal::IgnGimbalImu> gz_gimbal_imu_;
   // ros controller/publisher wrapper
   std::shared_ptr<gz_gimbal::GimbalController> gimbal_controller_;
 };

@@ -8,6 +8,7 @@ namespace gz_gimbal
 {
 
 GzGimbalNode::GzGimbalNode(const rclcpp::NodeOptions & options)
+    : rclcpp::Node("gz_gimbal_node", options)
 {
   node_ = std::make_shared<rclcpp::Node>("robot_base", options);
   gz_node_ = std::make_shared<ignition::transport::Node>();
@@ -24,19 +25,25 @@ GzGimbalNode::GzGimbalNode(const rclcpp::NodeOptions & options)
   std::string gz_yaw_cmd_topic = "/model/" + robot_name + "/joint/gimbal_yaw_joint/cmd_vel";
   std::string gz_joint_state_topic = "/world/" + world_name + "/model/" + robot_name +
     "/joint_state";
+  std::string gz_gimbal_imu_topic = "/world/" + world_name + "/model/" + robot_name +
+    "/link/gimbal_pitch/sensor/gimbal_imu/imu";
   // create hardware module
   // Actuator
   gimbal_vel_actuator_ = std::make_shared<gz_gimbal::IgnGimbalActuator>(
     node_, gz_node_, gz_pitch_cmd_topic, gz_yaw_cmd_topic);
   // sensor wrapper
-  gz_gimbal_encoder_ = std::make_shared<gz_gimbal::IgnGimbalActuatorIgnGimbalEncoder>(
+  gz_gimbal_encoder_ = std::make_shared<gz_gimbal::IgnGimbalEncoder>(
     node_, gz_node_, gz_joint_state_topic);
+  gz_gimbal_imu_ = std::make_shared<gz_gimbal::IgnGimbalImu>(
+    node_, gz_node_, gz_gimbal_imu_topic);
   // create controller and publisher
-  gimbal_controller_ = std::make_shared<gz_gimbal::IgnGimbalActuatorGimbalController>(
+  gimbal_controller_ = std::make_shared<gz_gimbal::GimbalController>(
     node_, gimbal_vel_actuator_, gz_gimbal_imu_->get_position_sensor());
   //
   gimbal_vel_actuator_->enable(true);
   gz_gimbal_encoder_->enable(true);
+  gz_gimbal_encoder_->enable(true);
+  gz_gimbal_imu_->enable(true);
 }
 
 }  // namespace gz_gimbal

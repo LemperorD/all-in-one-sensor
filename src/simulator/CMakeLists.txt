@@ -76,12 +76,12 @@ rclcpp_components_register_nodes(gz_cam_node "gz_cam::GzCamNode")
 
 # Create gz_gimbal lib
 add_library(gz_gimbal_node SHARED
+  src/gz_gimbal/gz_gimbal_imu.cpp
   src/gz_gimbal/gz_gimbal_node.cpp
   src/gz_gimbal/gz_gimbal_actuator.cpp
   src/gz_gimbal/gz_gimbal_encoder.cpp
   src/gz_gimbal/pid.cpp
   src/gz_gimbal/gimbal_controller.cpp
-  src/gz_gimbal/gz_gimbal_imu.cpp
 )
 set(dependencies
   rclcpp

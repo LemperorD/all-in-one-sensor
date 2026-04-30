@@ -48,12 +48,6 @@ def generate_launch_description():
     urdf_generator.parse_from_sdf_string(robot_xml)
     robot_urdf_xml = urdf_generator.to_string()
 
-    # # replace the <robot_name> in the bridge config file
-    # aft_replace_ros_bridge_params = ReplaceString(
-    #     source_file=bridge_config,
-    #     replacements={"<robot_name>": robot["name"]},
-    # )
-
     spawn_robot = Node(
         package="ros_gz_sim",
         executable="create",

@@ -36,7 +36,7 @@ GimbalController::GimbalController(
     gimbal_state_topic, 10);
   gimbal_cmd_sub_ = node_->create_subscription<simulator::msg::GimbalCmd>(
     gimbal_cmd_topic, 10, std::bind(&GimbalController::gimbal_cb, this, _1));
-  ros_gimbal_cmd_sub_ = node_->create_subscription<sensor_msgs::msg::JointState>(
+  ros_gimbal_joint_sub_ = node_->create_subscription<sensor_msgs::msg::JointState>(
     gimbal_joint_cmd_topic, 10, std::bind(&GimbalController::gimbal_joint_cb, this, _1));
   // timer
   int pid_rate = 100;
