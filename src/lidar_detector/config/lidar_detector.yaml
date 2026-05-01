@@ -1,0 +1,17 @@
+lidar_detector_node:
+  ros__parameters:
+    # Sensor topic configuration
+    # input point cloud topic from LiDAR/fastlio
+    input_pc_topic: "/cloud_registered"
+    
+    # output detected objects topic (3D coordinates of cluster centroids)
+    output_objects_topic: "/detected_objects"
+    
+    # DBSCAN clustering parameters
+    # eps: radius of neighborhood (in meters)
+    # Points within this distance are considered neighbors
+    dbscan_eps: 0.5
+    
+    # min_pts: minimum number of points to form a dense region
+    # A point is a core point if it has at least min_pts neighbors
+    dbscan_min_pts: 5
