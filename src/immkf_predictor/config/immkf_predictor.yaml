@@ -1,0 +1,8 @@
+pridictor_node:
+  ros__parameters:
+    # Sensor topic configuration
+    # input point cloud topic from LiDAR/fastlio
+    input_pc_topic: "/cloud_registered"
+    
+    # output detected objects topic (3D coordinates of cluster centroids)
+    output_objects_topic: "/detected_objects"
