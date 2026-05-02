@@ -84,7 +84,7 @@ public:
     Track3DState state;
     
     // 3D position and dimensions
-    Eigen::Vector7f mean;  // [x, y, z, length, width, height, rotation_y]
+    Eigen::Matrix<float, 7, 1> mean;  // [x, y, z, length, width, height, rotation_y]
     Eigen::Matrix<float, 7, 7> covariance;
     
     // Velocity in 3D space (dx, dy, dz per frame)

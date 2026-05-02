@@ -12,7 +12,7 @@ int STrack3D::next_id = 0;
 STrack3D::STrack3D()
     : track_id(-1), state(Track3DState::New), frame_id(-1),
       time_since_update(0), hits(0), age(0) {
-    mean = Eigen::Vector7f::Zero();
+        mean = Eigen::Matrix<float, 7, 1>::Zero();
     covariance = Eigen::Matrix<float, 7, 7>::Identity() * 10.0f;
     velocity = Eigen::Vector3f::Zero();
 }
@@ -70,7 +70,7 @@ void STrack3D::kalmanPredict() {
 }
 
 void STrack3D::kalmanUpdate(const Detection3D& det) {
-    Eigen::Vector7f z;
+    Eigen::Matrix<float, 7, 1> z;
     z[0] = det.x;
     z[1] = det.y;
     z[2] = det.z;
@@ -97,7 +97,7 @@ void STrack3D::kalmanUpdate(const Detection3D& det) {
     Eigen::Matrix<float, 7, 7> K = covariance * H.transpose() * S.inverse();
     
     // Innovation
-    Eigen::Vector7f y = z - mean;
+    Eigen::Matrix<float, 7, 1> y = z - mean;
     
     // Update mean and covariance
     mean = mean + K * y;
@@ -149,7 +149,7 @@ void STrack3D::updateWithoutDetection(int frame_id_val) {
 }
 
 float STrack3D::getMahalanobisDistance(const Detection3D& det) const {
-    Eigen::Vector7f z;
+    Eigen::Matrix<float, 7, 1> z;
     z[0] = det.x;
     z[1] = det.y;
     z[2] = det.z;
@@ -158,8 +158,8 @@ float STrack3D::getMahalanobisDistance(const Detection3D& det) const {
     z[5] = det.height;
     z[6] = det.rotation_y;
     
-    Eigen::Vector7f y = z - mean;
-    
+    Eigen::Matrix<float, 7, 1> y = z - mean;
+
     // Mahalanobis distance
     float mahal = y.transpose() * covariance.inverse() * y;
     return std::sqrt(mahal);
