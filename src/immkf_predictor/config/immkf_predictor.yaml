@@ -2,13 +2,27 @@ predictor_node:
   ros__parameters:
     topics:
       input: "/tracks_3d"
-      output_path: "/immkf/predicted_path"
-      output_pose: "/immkf/predicted_pose"
+      output_path_prefix: "/immkf/tracks"
+      output_pose_prefix: "/immkf/poses"
+    
+    # Multi-target tracking configuration
+    track_timeout_seconds: 5.0  # Remove tracks not seen for this duration
+    max_tracks: 100             # Maximum number of simultaneous tracks
+    min_confidence: 0.0         # Minimum confidence threshold for detections
+    publish_per_track: true     # Publish individual paths for each track
+    publish_aggregated: false   # Publish all tracks in a single message
+    allowed_class_ids: []       # Empty means all classes allowed; specify IDs to filter
+    
+    # Initial state and uncertainty
     initial_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
     initial_covariance_diagonal: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    
+    # Prediction horizon
     prediction_dt: 0.1
     prediction_horizon: 10
+    
+    # Measurement noise (for Kalman filter)
     measurement_noise_x: 1.0
     measurement_noise_y: 1.0
-    target_detection_index: -1
+
 

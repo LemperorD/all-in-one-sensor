@@ -3,11 +3,20 @@
 <package format="3">
   <name>mpc_gimbal_planner</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>MPC based planner for dual-axis gimbal active viewpoint control.</description>
   <maintainer email="ld2382619813@163.com">ld</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
+  <depend>simulator</depend>
+  <depend>tf2</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_ros</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

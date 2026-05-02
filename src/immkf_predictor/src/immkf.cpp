@@ -581,4 +581,91 @@ bool ImmkfPredictor::isInitialized() const
 	return initialized_;
 }
 
+TrackManager::TrackManager(const ImmkfConfig & config)
+: config_(config)
+{
+}
+
+std::shared_ptr<ImmkfPredictor> TrackManager::getOrCreateTrack(const std::string & track_id)
+{
+	auto it = tracks_.find(track_id);
+	if (it != tracks_.end()) {
+		return it->second;
+	}
+
+	auto predictor = std::make_shared<ImmkfPredictor>(config_);
+	tracks_[track_id] = predictor;
+	last_update_times_[track_id] = 0.0;
+	return predictor;
+}
+
+void TrackManager::predictAll(double dt)
+{
+	for (auto & [track_id, predictor] : tracks_) {
+		predictor->predict(dt);
+	}
+}
+
+void TrackManager::updateTrack(const std::string & track_id, const Measurement & measurement)
+{
+	auto predictor = getOrCreateTrack(track_id);
+	predictor->update(measurement);
+	last_update_times_[track_id] = 0.0;
+}
+
+std::vector<State> TrackManager::getTrajectory(
+	const std::string & track_id,
+	double dt,
+	std::size_t horizon) const
+{
+	auto it = tracks_.find(track_id);
+	if (it == tracks_.end()) {
+		return std::vector<State>{};
+	}
+
+	return it->second->predictTrajectory(dt, horizon);
+}
+
+std::vector<TrackState> TrackManager::getAllTracks() const
+{
+	std::vector<TrackState> result;
+	for (const auto & [track_id, predictor] : tracks_) {
+		TrackState ts;
+		ts.track_id = track_id;
+		ts.predictor = predictor;
+		ts.trajectory = predictor->predictTrajectory(0.1, 10);  // Default horizon for display
+		auto it = last_update_times_.find(track_id);
+		ts.last_update_time = (it != last_update_times_.end()) ? it->second : 0.0;
+		result.push_back(ts);
+	}
+	return result;
+}
+
+void TrackManager::pruneInactiveTracks(double current_time, double timeout_seconds)
+{
+	std::vector<std::string> to_remove;
+	for (const auto & [track_id, last_time] : last_update_times_) {
+		if (current_time - last_time > timeout_seconds) {
+			to_remove.push_back(track_id);
+		}
+	}
+
+	for (const auto & track_id : to_remove) {
+		tracks_.erase(track_id);
+		last_update_times_.erase(track_id);
+	}
+}
+
+void TrackManager::clear()
+{
+	tracks_.clear();
+	last_update_times_.clear();
+}
+
+std::size_t TrackManager::size() const
+{
+	return tracks_.size();
+}
+
 }  // namespace immkf_predictor
+

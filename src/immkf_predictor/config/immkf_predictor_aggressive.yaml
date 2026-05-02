@@ -1,0 +1,27 @@
+predictor_node:
+  ros__parameters:
+    topics:
+      input: "/tracks_3d"
+      output_path_prefix: "/immkf/tracks"
+      output_pose_prefix: "/immkf/poses"
+    
+    # Aggressive tracking: Short timeout, high confidence threshold
+    # Good for scenarios with minimal occlusion
+    track_timeout_seconds: 2.0
+    max_tracks: 100
+    min_confidence: 0.7
+    publish_per_track: true
+    publish_aggregated: false
+    
+    # Only track person detections (class ID 0)
+    allowed_class_ids: [0]
+    
+    initial_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    initial_covariance_diagonal: [1.0, 1.0, 0.5, 0.5, 0.5, 0.5]
+    
+    # Shorter prediction horizon for aggressive tracking
+    prediction_dt: 0.05
+    prediction_horizon: 10
+    
+    measurement_noise_x: 0.5
+    measurement_noise_y: 0.5

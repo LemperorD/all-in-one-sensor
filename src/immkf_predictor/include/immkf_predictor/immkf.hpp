@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <Eigen/Dense>
@@ -149,6 +150,49 @@ private:
 	void rebuildFusedEstimate();
 	void mixModelStates();
 	double measurementLikelihood(std::size_t index, const Measurement & measurement) const;
+};
+
+struct TrackState
+{
+	std::string track_id;
+	std::shared_ptr<ImmkfPredictor> predictor;
+	std::vector<State> trajectory;
+	double last_update_time = 0.0;
+};
+
+class TrackManager
+{
+public:
+	explicit TrackManager(const ImmkfConfig & config = {});
+
+	// Get or create a track predictor for the given track_id
+	std::shared_ptr<ImmkfPredictor> getOrCreateTrack(const std::string & track_id);
+
+	// Predict all tracks
+	void predictAll(double dt);
+
+	// Update a specific track with measurement
+	void updateTrack(const std::string & track_id, const Measurement & measurement);
+
+	// Get trajectory for a specific track
+	std::vector<State> getTrajectory(const std::string & track_id, double dt, std::size_t horizon) const;
+
+	// Get all track states
+	std::vector<TrackState> getAllTracks() const;
+
+	// Remove inactive tracks (older than timeout_seconds)
+	void pruneInactiveTracks(double current_time, double timeout_seconds);
+
+	// Clear all tracks
+	void clear();
+
+	// Get number of active tracks
+	std::size_t size() const;
+
+private:
+	ImmkfConfig config_;
+	std::unordered_map<std::string, std::shared_ptr<ImmkfPredictor>> tracks_;
+	std::unordered_map<std::string, double> last_update_times_;
 };
 
 }  // namespace immkf_predictor

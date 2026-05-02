@@ -1,0 +1,26 @@
+predictor_node:
+  ros__parameters:
+    topics:
+      input: "/tracks_3d"
+      output_path_prefix: "/immkf/tracks"
+      output_pose_prefix: "/immkf/poses"
+    
+    # Conservative tracking: Keep tracks longer, tolerate brief occlusions
+    track_timeout_seconds: 10.0
+    max_tracks: 50
+    min_confidence: 0.3
+    publish_per_track: true
+    publish_aggregated: true
+    
+    # Track only person and vehicle classes (IDs: 0=person, 2=car, 5=bus, 7=truck)
+    allowed_class_ids: [0, 2, 5, 7]
+    
+    initial_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    initial_covariance_diagonal: [2.0, 2.0, 1.0, 1.0, 1.0, 1.0]
+    
+    # Longer prediction horizon for conservative tracking
+    prediction_dt: 0.1
+    prediction_horizon: 20
+    
+    measurement_noise_x: 1.5
+    measurement_noise_y: 1.5
