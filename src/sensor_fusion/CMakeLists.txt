@@ -7,9 +7,60 @@ endif()
 
 # find dependencies
 find_package(ament_cmake REQUIRED)
+find_package(Eigen3 REQUIRED)
+find_package(OpenCV REQUIRED)
+
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+
+# ByteTrack library
+add_library(bytetrack 
+  src/bytetrack.cpp
+)
+
+target_include_directories(bytetrack
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(bytetrack
+  Eigen3::Eigen
+  ${OpenCV_LIBS}
+)
+
+target_compile_features(bytetrack PUBLIC cxx_std_17)
+
+# AB3DMOT library (3D Multi-Object Tracking)
+add_library(ab3dmot
+  src/AB3DMOT.cpp
+)
+
+target_include_directories(ab3dmot
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+target_link_libraries(ab3dmot
+  Eigen3::Eigen
+  ${OpenCV_LIBS}
+)
+
+target_compile_features(ab3dmot PUBLIC cxx_std_17)
+
+# Install headers
+install(
+  DIRECTORY include/
+  DESTINATION include
+)
+
+# Install libraries
+install(
+  TARGETS bytetrack ab3dmot
+  DESTINATION lib
+)
 
 if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
