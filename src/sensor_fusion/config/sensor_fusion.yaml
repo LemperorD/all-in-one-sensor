@@ -1,5 +1,12 @@
 # Sensor Fusion Node Configuration
 
+# Topic subscriptions and publications
+topics:
+  detections_2d: "/detections_2d"      # Input: 2D detections from detector
+  detections_3d: "/detections_3d"      # Input: 3D detections from LiDAR
+  tracks_2d: "/tracks_2d"              # Output: 2D tracks from ByteTrack
+  tracks_3d: "/tracks_3d"              # Output: 3D tracks from AB3DMOT
+
 # Camera intrinsics (3x3 K matrix, row-major order)
 # K = [fx, 0, cx, 0, fy, cy, 0, 0, 1]
 # Typical values for image resolution 640x480
@@ -22,3 +29,4 @@ ab3dmot:
   high_conf_threshold: 0.5   # Confidence threshold for high confidence detections
   low_conf_threshold: 0.1    # Confidence threshold for low confidence detections
   mahal_threshold: 9.4877    # Mahalanobis distance threshold (chi-squared for 7-DOF)
+

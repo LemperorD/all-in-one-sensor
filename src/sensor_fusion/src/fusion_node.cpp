@@ -20,6 +20,21 @@ FusionNode::~FusionNode()
 
 void FusionNode::onConfigure()
 {
+    // Declare and read topic names
+    this->declare_parameter<std::string>("topics.detections_2d", "/detections_2d");
+    this->declare_parameter<std::string>("topics.detections_3d", "/detections_3d");
+    this->declare_parameter<std::string>("topics.tracks_2d", "/tracks_2d");
+    this->declare_parameter<std::string>("topics.tracks_3d", "/tracks_3d");
+    
+    topic_detections_2d_ = this->get_parameter("topics.detections_2d").as_string();
+    topic_detections_3d_ = this->get_parameter("topics.detections_3d").as_string();
+    topic_tracks_2d_ = this->get_parameter("topics.tracks_2d").as_string();
+    topic_tracks_3d_ = this->get_parameter("topics.tracks_3d").as_string();
+    
+    RCLCPP_INFO(this->get_logger(), "Topic config: 2D dets=%s, 3D dets=%s, 2D tracks=%s, 3D tracks=%s",
+                topic_detections_2d_.c_str(), topic_detections_3d_.c_str(),
+                topic_tracks_2d_.c_str(), topic_tracks_3d_.c_str());
+
     // Declare and read camera intrinsics parameters
     this->declare_parameter<std::vector<double>>("camera.K", std::vector<double>{640, 0, 320, 0, 640, 240, 0, 0, 1});
     auto K_vec = this->get_parameter("camera.K").as_double_array();
@@ -86,9 +101,12 @@ void FusionNode::processFrame(int frame_id,
     // 3) For 2D tracking, use input 2D detections directly
     last2d_tracks_ = bytetrack_.update(dets2d, frame_id);
 
-    // 4) (Optional) Produce fused outputs: here we simply log counts
-    RCLCPP_INFO(this->get_logger(), "Frame %d: fused3d=%zu 2d_tracks=%zu 3d_tracks=%zu",
-                frame_id, fused3d.size(), last2d_tracks_.size(), last3d_tracks_.size());
+    // 4) Log processing results
+    RCLCPP_DEBUG(this->get_logger(), 
+                "Frame %d: input(2d=%zu, 3d=%zu) -> fused3d=%zu, 2d_tracks=%zu (pub:%s), 3d_tracks=%zu (pub:%s)",
+                frame_id, dets2d.size(), dets3d.size(), fused3d.size(),
+                last2d_tracks_.size(), topic_tracks_2d_.c_str(),
+                last3d_tracks_.size(), topic_tracks_3d_.c_str());
 }
 
 } // namespace sensor_fusion

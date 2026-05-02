@@ -32,6 +32,12 @@ public: // 方法
                     const Eigen::Matrix3f &K);
 
 private: // 成员变量
+  // Topic names (for future subscriber/publisher setup)
+  std::string topic_detections_2d_;
+  std::string topic_detections_3d_;
+  std::string topic_tracks_2d_;
+  std::string topic_tracks_3d_;
+
   // Trackers
   ByteTrack bytetrack_;
   AB3DMOT ab3dmot_;
