@@ -3,7 +3,9 @@
 
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
-#include <geometry_msgs/msg/point_stamped.hpp>
+#include <yolo_msgs/msg/detection_array.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/vector3.hpp>
 
 #include "dbscan.hpp"
 
@@ -23,15 +25,23 @@ private: // 成员变量
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pcl_sub_;
   
   // Publishers and topic names
-  rclcpp::Publisher<geometry_msgs::msg::PointStamped>::SharedPtr objects_pub_;
+  rclcpp::Publisher<yolo_msgs::msg::DetectionArray>::SharedPtr detections_pub_;
   std::string input_pc_topic_;
-  std::string output_objects_topic_;
+  std::string output_detections_topic_;
+  double confidence_point_scale_;
   
   // DBSCAN clustering
   DBSCAN dbscan_;
   
   // Point cloud callback
   void onPointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg);
+
+  double computeConfidence(std::size_t point_count) const;
+  yolo_msgs::msg::Detection buildDetection(const geometry_msgs::msg::Pose &center,
+                                           const geometry_msgs::msg::Vector3 &size,
+                                           std::size_t point_count,
+                                           const std::string &frame_id,
+                                           std::size_t cluster_id) const;
 
 };
 

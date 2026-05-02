@@ -11,13 +11,14 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(rclcpp_components REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(yolo_msgs REQUIRED)
 
 # Include directories
 include_directories(include)
 
 # Declare a library for lidar_detector component
 add_library(lidar_detector_component SHARED src/lidar_detector.cpp)
-ament_target_dependencies(lidar_detector_component rclcpp sensor_msgs rclcpp_components geometry_msgs)
+ament_target_dependencies(lidar_detector_component rclcpp sensor_msgs rclcpp_components geometry_msgs yolo_msgs)
 target_include_directories(lidar_detector_component PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>

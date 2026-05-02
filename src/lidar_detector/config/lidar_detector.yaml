@@ -4,8 +4,8 @@ lidar_detector_node:
     # input point cloud topic from LiDAR/fastlio
     input_pc_topic: "/cloud_registered"
     
-    # output detected objects topic (3D coordinates of cluster centroids)
-    output_objects_topic: "/detected_objects"
+    # output detected objects topic (3D detections with bbox and confidence)
+    output_detections_topic: "/lidar_detections"
     
     # DBSCAN clustering parameters
     # eps: radius of neighborhood (in meters)
@@ -15,3 +15,6 @@ lidar_detector_node:
     # min_pts: minimum number of points to form a dense region
     # A point is a core point if it has at least min_pts neighbors
     dbscan_min_pts: 5
+
+    # Heuristic confidence scale: larger values make confidence rise slower
+    confidence_point_scale: 25.0

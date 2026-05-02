@@ -128,6 +128,8 @@ public:
 	}
 
 	int getNumClusters() const { return last_cluster_id_; }
+	const std::vector<Point3> &points() const { return points_; }
+	const std::vector<int> &labels() const { return labels_; }
 
 private:
 	static constexpr int UNVISITED = 0;
