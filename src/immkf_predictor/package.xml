@@ -3,11 +3,18 @@
 <package format="3">
   <name>immkf_predictor</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
+  <description>IMM-KF trajectory predictor with four motion models.</description>
   <maintainer email="ld2382619813@163.com">ld</maintainer>
-  <license>TODO: License declaration</license>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+
+  <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
+  <depend>yolo_msgs</depend>
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>ament_lint_common</test_depend>

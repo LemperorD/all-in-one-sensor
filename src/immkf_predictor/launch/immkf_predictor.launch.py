@@ -6,28 +6,22 @@ from ament_index_python.packages import get_package_share_directory
 
 
 def generate_launch_description():
-    """Generate launch description for lidar_detector node."""
-    
-    # Get the package directory
-    pkg_dir = get_package_share_directory('lidar_detector')
-    config_file = os.path.join(pkg_dir, 'config', 'lidar_detector.yaml')
-    
-    # Create a container for the component node
+    """Generate launch description for immkf_predictor node."""
+
+    pkg_dir = get_package_share_directory('immkf_predictor')
+    config_file = os.path.join(pkg_dir, 'config', 'immkf_predictor.yaml')
+
     container = ComposableNodeContainer(
-        name='lidar_detector_container',
+        name='immkf_predictor_container',
         namespace='',
         package='rclcpp_components',
         executable='component_container',
         composable_node_descriptions=[
             ComposableNode(
-                package='lidar_detector',
-                plugin='lidar_detector::LidarDetectorNode',
-                name='lidar_detector',
+                package='immkf_predictor',
+                plugin='immkf_predictor::PredictorNode',
+                name='predictor_node',
                 parameters=[config_file],
-                remappings=[
-                    # Subscribe to point cloud from fast_lio
-                    ('/cloud_registered', '/cloud_registered'),
-                ],
             ),
         ],
         output='screen',

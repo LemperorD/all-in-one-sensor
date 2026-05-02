@@ -1,3 +1,14 @@
 predictor_node:
   ros__parameters:
+    topics:
+      input: "/tracks_3d"
+      output_path: "/immkf/predicted_path"
+      output_pose: "/immkf/predicted_pose"
+    initial_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    initial_covariance_diagonal: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+    prediction_dt: 0.1
+    prediction_horizon: 10
+    measurement_noise_x: 1.0
+    measurement_noise_y: 1.0
+    target_detection_index: -1
 
