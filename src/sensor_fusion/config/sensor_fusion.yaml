@@ -1,0 +1,24 @@
+# Sensor Fusion Node Configuration
+
+# Camera intrinsics (3x3 K matrix, row-major order)
+# K = [fx, 0, cx, 0, fy, cy, 0, 0, 1]
+# Typical values for image resolution 640x480
+camera:
+  K: [640.0, 0.0, 320.0, 0.0, 640.0, 240.0, 0.0, 0.0, 1.0]
+  # K: [916.0, 0.0, 424.5, 0.0, 916.0, 240.0, 0.0, 0.0, 1.0]  # Alternative for 849x480
+
+# Fusion parameters
+fusion:
+  iou_threshold: 0.3  # IoU threshold for associating 2D and 3D detections
+
+# ByteTrack (2D tracking) parameters
+bytetrack:
+  high_conf_threshold: 0.5   # Confidence threshold for high confidence detections
+  low_conf_threshold: 0.1    # Confidence threshold for low confidence detections
+  iou_threshold: 0.3         # IoU threshold for matching
+
+# AB3DMOT (3D tracking) parameters
+ab3dmot:
+  high_conf_threshold: 0.5   # Confidence threshold for high confidence detections
+  low_conf_threshold: 0.1    # Confidence threshold for low confidence detections
+  mahal_threshold: 9.4877    # Mahalanobis distance threshold (chi-squared for 7-DOF)

@@ -9,13 +9,15 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(rclcpp REQUIRED)
+find_package(rclcpp_components REQUIRED)
 
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 
 # ByteTrack library
-add_library(bytetrack 
+add_library(bytetrack SHARED
   src/bytetrack.cpp
 )
 
@@ -33,7 +35,7 @@ target_link_libraries(bytetrack
 target_compile_features(bytetrack PUBLIC cxx_std_17)
 
 # AB3DMOT library (3D Multi-Object Tracking)
-add_library(ab3dmot
+add_library(ab3dmot SHARED
   src/AB3DMOT.cpp
 )
 
@@ -60,6 +62,43 @@ install(
 install(
   TARGETS bytetrack ab3dmot
   DESTINATION lib
+)
+
+# Fusion node (component) and fusion utils
+add_library(fusion_node SHARED
+  src/fusion_node.cpp
+  src/fusion_utils.cpp
+)
+
+target_include_directories(fusion_node
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+    $<INSTALL_INTERFACE:include>
+)
+
+ament_target_dependencies(fusion_node rclcpp rclcpp_components)
+
+target_link_libraries(fusion_node
+  bytetrack
+  ab3dmot
+  Eigen3::Eigen
+  ${OpenCV_LIBS}
+)
+
+target_compile_features(fusion_node PUBLIC cxx_std_17)
+
+install(TARGETS fusion_node DESTINATION lib)
+
+# Install launch files
+install(
+  DIRECTORY launch/
+  DESTINATION share/${PROJECT_NAME}/launch
+)
+
+# Install config files
+install(
+  DIRECTORY config/
+  DESTINATION share/${PROJECT_NAME}/config
 )
 
 if(BUILD_TESTING)

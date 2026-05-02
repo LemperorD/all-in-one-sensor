@@ -1,4 +1,8 @@
-#include "sensor_fusion_node/fusion_node.hpp"
+#include "sensor_fusion/fusion_node.hpp"
+#include "sensor_fusion/fusion_utils.hpp"
+#include <chrono>
+
+using namespace std::chrono_literals;
 
 namespace sensor_fusion
 {
@@ -16,7 +20,75 @@ FusionNode::~FusionNode()
 
 void FusionNode::onConfigure()
 {
+    // Declare and read camera intrinsics parameters
+    this->declare_parameter<std::vector<double>>("camera.K", std::vector<double>{640, 0, 320, 0, 640, 240, 0, 0, 1});
+    auto K_vec = this->get_parameter("camera.K").as_double_array();
+    
+    if (K_vec.size() != 9) {
+        RCLCPP_WARN(this->get_logger(), "Invalid camera.K size, using defaults");
+        camera_K_ = Eigen::Matrix3f::Identity();
+        camera_K_(0, 0) = 640.0f;  // fx
+        camera_K_(1, 1) = 640.0f;  // fy
+        camera_K_(0, 2) = 320.0f;  // cx
+        camera_K_(1, 2) = 240.0f;  // cy
+    } else {
+        camera_K_ << K_vec[0], K_vec[1], K_vec[2],
+                     K_vec[3], K_vec[4], K_vec[5],
+                     K_vec[6], K_vec[7], K_vec[8];
+    }
+    RCLCPP_INFO(this->get_logger(), "Camera intrinsics loaded");
 
+    // Declare and read fusion parameters
+    this->declare_parameter<float>("fusion.iou_threshold", 0.3f);
+    fusion_iou_threshold_ = this->get_parameter("fusion.iou_threshold").as_double();
+
+    // ByteTrack parameters
+    this->declare_parameter<float>("bytetrack.high_conf_threshold", 0.5f);
+    this->declare_parameter<float>("bytetrack.low_conf_threshold", 0.1f);
+    this->declare_parameter<float>("bytetrack.iou_threshold", 0.3f);
+    
+    bytetrack_high_conf_ = this->get_parameter("bytetrack.high_conf_threshold").as_double();
+    bytetrack_low_conf_ = this->get_parameter("bytetrack.low_conf_threshold").as_double();
+    bytetrack_iou_thresh_ = this->get_parameter("bytetrack.iou_threshold").as_double();
+    
+    // Configure ByteTrack
+    bytetrack_.high_conf_threshold = bytetrack_high_conf_;
+    bytetrack_.low_conf_threshold = bytetrack_low_conf_;
+    bytetrack_.iou_threshold = bytetrack_iou_thresh_;
+
+    // AB3DMOT parameters
+    this->declare_parameter<float>("ab3dmot.high_conf_threshold", 0.5f);
+    this->declare_parameter<float>("ab3dmot.low_conf_threshold", 0.1f);
+    this->declare_parameter<float>("ab3dmot.mahal_threshold", 9.4877f);
+    
+    ab3dmot_high_conf_ = this->get_parameter("ab3dmot.high_conf_threshold").as_double();
+    ab3dmot_low_conf_ = this->get_parameter("ab3dmot.low_conf_threshold").as_double();
+    ab3dmot_mahal_thresh_ = this->get_parameter("ab3dmot.mahal_threshold").as_double();
+    
+    // Configure AB3DMOT
+    ab3dmot_.high_conf_threshold = ab3dmot_high_conf_;
+    ab3dmot_.low_conf_threshold = ab3dmot_low_conf_;
+    ab3dmot_.mahal_threshold = ab3dmot_mahal_thresh_;
+
+    RCLCPP_INFO(this->get_logger(), "FusionNode configured successfully");
+}
+
+void FusionNode::processFrame(int frame_id,
+                              const std::vector<Detection> &dets2d,
+                              const std::vector<Detection3D> &dets3d,
+                              const Eigen::Matrix3f &K) {
+    // 1) Fuse detections (associate 2D<->3D by IoU and merge confidences)
+    auto fused3d = sensor_fusion::fuseDetectionsByIoU(dets2d, dets3d, K, fusion_iou_threshold_);
+
+    // 2) Update 3D tracker
+    last3d_tracks_ = ab3dmot_.update(fused3d, frame_id);
+
+    // 3) For 2D tracking, use input 2D detections directly
+    last2d_tracks_ = bytetrack_.update(dets2d, frame_id);
+
+    // 4) (Optional) Produce fused outputs: here we simply log counts
+    RCLCPP_INFO(this->get_logger(), "Frame %d: fused3d=%zu 2d_tracks=%zu 3d_tracks=%zu",
+                frame_id, fused3d.size(), last2d_tracks_.size(), last3d_tracks_.size());
 }
 
 } // namespace sensor_fusion

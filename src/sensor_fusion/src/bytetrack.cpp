@@ -17,8 +17,8 @@ STrack::STrack()
 }
 
 STrack::STrack(const Detection& det, int frame_id_val)
-    : track_id(next_id++), state(TrackState::New), frame_id(frame_id_val),
-      time_since_update(0), hits(1), age(1), bbox(det.bbox) {
+    : track_id(next_id++), state(TrackState::New), bbox(det.bbox), center(det.getCenter()),
+      frame_id(frame_id_val), time_since_update(0), hits(1), age(1) {
     
     center = det.getCenter();
     initKalmanFilter(det);
@@ -150,11 +150,6 @@ void STrack::updateWithoutDetection(int frame_id_val) {
 
 float STrack::getIoU(const Detection& det) const {
     // Intersection over Union
-    float x1_min = std::min(bbox.x, det.bbox.x);
-    float y1_min = std::min(bbox.y, det.bbox.y);
-    float x1_max = std::max(bbox.x + bbox.width, det.bbox.x + det.bbox.width);
-    float y1_max = std::max(bbox.y + bbox.height, det.bbox.y + det.bbox.height);
-    
     float inter_w = std::max(0.0f, std::min(bbox.x + bbox.width, det.bbox.x + det.bbox.width) - 
                                    std::max(bbox.x, det.bbox.x));
     float inter_h = std::max(0.0f, std::min(bbox.y + bbox.height, det.bbox.y + det.bbox.height) - 
