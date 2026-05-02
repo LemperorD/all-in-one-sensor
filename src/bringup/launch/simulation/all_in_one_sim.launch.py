@@ -6,8 +6,8 @@ from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration, TextSubstitution
-from launch_ros.actions import Node
-from launch_ros.descriptions import ParameterFile
+from launch_ros.actions import LoadComposableNodes, Node
+from launch_ros.descriptions import ParameterFile, ComposableNode
 from nav2_common.launch import RewrittenYaml
 
 
@@ -37,11 +37,6 @@ def generate_launch_description():
     declare_namespace_cmd = DeclareLaunchArgument(
         "namespace", default_value="all_in_one_sensor",
         description="Top-level namespace",
-    )
-
-    declare_world_cmd = DeclareLaunchArgument(
-        "world", default_value="rmuc_2025",
-        description="Gazebo world name (without .sdf or .world extension)",
     )
 
     declare_use_sim_time_cmd = DeclareLaunchArgument(
@@ -84,6 +79,29 @@ def generate_launch_description():
         }.items(),
     )
 
+    start_fast_lio_node = Node(
+        package="fast_lio",
+        executable="fastlio_mapping",
+        name="fast_lio",
+        output="screen",
+        parameters=[configured_params],
+    )
+
+    load_composable_nodes = LoadComposableNodes(
+        target_container=container_name_full,
+        composable_node_descriptions=[
+            ComposableNode(
+
+            ),
+            ComposableNode(
+
+            ),
+            ComposableNode(
+
+            ),
+        ],
+    )
+
     ld = LaunchDescription()
 
     # Declare the launch options
@@ -96,5 +114,7 @@ def generate_launch_description():
     # Add the actions to launch all of the navigation nodes
     ld.add_action(start_velodyne_convert_tool)
     ld.add_action(rviz_cmd)
+    ld.add_action(start_fast_lio_node)
+    ld.add_action(load_composable_nodes)
 
     return ld
