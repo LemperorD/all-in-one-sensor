@@ -4,7 +4,7 @@
   <name>bringup</name>
   <version>0.1.0</version>
   <description>系统启动和配置管理包，包含仿真和现实环境的启动文件、配置和参数管理</description>
-  <maintainer email="ld2382619813@163.com">Lihan Chen</maintainer>
+  <maintainer email="ld2382619813@163.com">LemperorD</maintainer>
   <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
