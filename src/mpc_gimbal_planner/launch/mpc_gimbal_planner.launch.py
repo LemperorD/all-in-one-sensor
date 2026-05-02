@@ -15,7 +15,8 @@ def generate_launch_description():
         name='mpc_gimbal_planner_container',
         namespace='',
         package='rclcpp_components',
-        executable='component_container',
+        # use the multi-threaded container where available
+        executable='component_container_mt',
         composable_node_descriptions=[
             ComposableNode(
                 package='mpc_gimbal_planner',

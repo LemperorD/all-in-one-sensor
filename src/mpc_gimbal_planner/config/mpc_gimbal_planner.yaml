@@ -1,18 +1,26 @@
+
 planner_node:
 	ros__parameters:
+		# Topics
 		input_path_topic: "/immkf/tracks/all_tracks"
 		input_state_topic: "robot_base/gimbal_state"
 		output_cmd_topic: "robot_base/gimbal_cmd"
+
+		# Frames and timing
 		base_frame: "base_footprint"
-		prediction_horizon: 10
+		prediction_horizon: 15
 		prediction_dt: 0.1
-		control_rate_hz: 20.0
-		track_weight: 1.0
-		smooth_weight: 0.2
-		control_weight: 0.05
+		control_rate_hz: 30.0
+
+		# MPC weights (higher track_weight focuses on following target)
+		track_weight: 2.0
+		smooth_weight: 0.5
+		control_weight: 0.1
+
+		# Angle limits (radians) and max angular rate (rad/s)
 		yaw_min: -1.57
 		yaw_max: 1.57
 		pitch_min: -0.8
 		pitch_max: 0.8
-		max_rate: 1.0
+		max_rate: 2.0
 
