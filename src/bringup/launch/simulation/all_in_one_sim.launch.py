@@ -5,8 +5,8 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, IncludeLaunchDescription
 from launch.conditions import IfCondition
 from launch.launch_description_sources import PythonLaunchDescriptionSource
-from launch.substitutions import LaunchConfiguration, TextSubstitution
-from launch_ros.actions import Node
+from launch.substitutions import LaunchConfiguration
+from launch_ros.actions import Node, LoadComposableNodes
 from launch_ros.descriptions import ParameterFile, ComposableNode
 from nav2_common.launch import RewrittenYaml
 
@@ -60,8 +60,6 @@ def generate_launch_description():
         "use_rviz", default_value="True", description="Whether to start RVIZ"
     )
 
-    # ==================== Perception Nodes ====================
-    # Point Cloud Processing
     start_velodyne_convert_tool = Node(
         package="ign_sim_pointcloud_tool",
         executable="ign_sim_pointcloud_tool_node",
@@ -71,7 +69,6 @@ def generate_launch_description():
         parameters=[configured_params],
     )
 
-    # SLAM (Fast LIO)
     start_fast_lio_node = Node(
         package="fast_lio",
         executable="fastlio_mapping",
@@ -80,57 +77,50 @@ def generate_launch_description():
         parameters=[configured_params],
     )
 
-    # 2D Object Detection (YOLO)
-    start_yolo_detector_node = Node(
-        package="yolo_ros",
-        executable="yolo_node",
-        name="yolo_detector",
+    container = Node(
+        package="rclcpp_components",
+        executable="component_container",
+        name="perception_container",
         output="screen",
         namespace=namespace,
-        parameters=[configured_params],
     )
 
-    # 3D Object Detection (LiDAR-based)
-    start_lidar_detector_node = Node(
-        package="lidar_detector",
-        executable="lidar_detector_component",
-        name="lidar_detector",
-        output="screen",
-        namespace=namespace,
-        parameters=[configured_params],
-    )
-
-    # ==================== Fusion Node ====================
-    # Multi-Sensor Fusion (2D + 3D Detection)
-    start_fusion_node = Node(
-        package="sensor_fusion",
-        executable="fusion_node",
-        name="fusion_node",
-        output="screen",
-        namespace=namespace,
-        parameters=[configured_params],
-    )
-
-    # ==================== Tracking Node ====================
-    # IMMKF Trajectory Predictor
-    start_immkf_predictor_node = Node(
-        package="immkf_predictor",
-        executable="immkf_predictor_node",
-        name="immkf_predictor",
-        output="screen",
-        namespace=namespace,
-        parameters=[configured_params],
-    )
-
-    # ==================== Control Node ====================
-    # MPC Gimbal Planner Controller
-    start_mpc_planner_node = Node(
-        package="mpc_gimbal_planner",
-        executable="mpc_planner_node",
-        name="mpc_gimbal_planner",
-        output="screen",
-        namespace=namespace,
-        parameters=[configured_params],
+    load_composable_nodes = LoadComposableNodes(
+        target_container=["", namespace, "perception_container"],
+        composable_node_descriptions=[
+            # 3D Object Detection (LiDAR-based Component)
+            ComposableNode(
+                package="lidar_detector",
+                plugin="lidar_detector::LidarDetectorComponent",
+                name="lidar_detector",
+                namespace=namespace,
+                parameters=[configured_params],
+            ),
+            # Multi-Sensor Fusion Component
+            ComposableNode(
+                package="sensor_fusion",
+                plugin="sensor_fusion::FusionComponent",
+                name="fusion_node",
+                namespace=namespace,
+                parameters=[configured_params],
+            ),
+            # IMMKF Trajectory Predictor Component
+            ComposableNode(
+                package="immkf_predictor",
+                plugin="immkf_predictor::ImmkfPredictorComponent",
+                name="immkf_predictor",
+                namespace=namespace,
+                parameters=[configured_params],
+            ),
+            # MPC Gimbal Planner Component
+            ComposableNode(
+                package="mpc_gimbal_planner",
+                plugin="mpc_gimbal_planner::MpcPlannerComponent",
+                name="mpc_gimbal_planner",
+                namespace=namespace,
+                parameters=[configured_params],
+            ),
+        ],
     )
 
     # ==================== Visualization ====================
@@ -153,18 +143,13 @@ def generate_launch_description():
     ld.add_action(declare_rviz_config_file_cmd)
     ld.add_action(declare_use_rviz_cmd)
 
-    # Add Perception Pipeline
+    # Add Standalone Nodes (Non-component executables)
     ld.add_action(start_velodyne_convert_tool)
     ld.add_action(start_fast_lio_node)
-    ld.add_action(start_yolo_detector_node)
-    ld.add_action(start_lidar_detector_node)
 
-    # Add Fusion and Tracking Pipeline
-    ld.add_action(start_fusion_node)
-    ld.add_action(start_immkf_predictor_node)
-
-    # Add Control Pipeline
-    ld.add_action(start_mpc_planner_node)
+    # Add Component Container and Load Components
+    ld.add_action(container)
+    ld.add_action(load_composable_nodes)
 
     # Add Visualization
     ld.add_action(rviz_cmd)

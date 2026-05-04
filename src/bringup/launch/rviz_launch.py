@@ -11,7 +11,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     # Get the launch directory
-    bringup_dir = get_package_share_directory("pb2025_nav_bringup")
+    bringup_dir = get_package_share_directory("bringup")
 
     rviz_config_file = LaunchConfiguration("rviz_config")
 

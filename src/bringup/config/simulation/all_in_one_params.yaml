@@ -18,8 +18,8 @@ fast_lio:
     map_file_path: "./test.pcd"
 
     common:
-      lid_topic:  "/livox/lidar"
-      imu_topic:  "/livox/imu"
+      lid_topic: "velodyne_points"
+      imu_topic: "livox/imu"
       time_sync_en: false
       time_offset_lidar_to_imu: 0.0
 
@@ -33,17 +33,17 @@ fast_lio:
       gyr_cov: 0.1
       b_acc_cov: 0.0001
       b_gyr_cov: 0.0001
-      fov_degree:    90.0
-      det_range:     450.0
-      extrinsic_est_en:  false      # true: enable the online estimation of IMU-LiDAR extrinsic
+      fov_degree: 90.0
+      det_range: 450.0
+      extrinsic_est_en: false      # true: enable the online estimation of IMU-LiDAR extrinsic
       extrinsic_T: [ 0.04165, 0.02326, -0.0284 ]
       extrinsic_R: [ 1., 0., 0.,
                   0., 1., 0.,
                   0., 0., 1.]
 
     publish:
-      path_en:  false
-      scan_publish_en:  true
+      path_en: false
+      scan_publish_en: true
       dense_publish_en: true
       scan_bodyframe_pub_en: true
 
@@ -179,8 +179,8 @@ immkf_predictor:
     
     # Model Transition Probabilities
     # Markov chain for mode switching
-    model_markov_matrix: [[0.95, 0.05],  # From CV: stay 95%, switch 5%
-                          [0.05, 0.95]]  # From CA: stay 95%, switch 5%
+    # ROS2 parameter does not support nested arrays, use row-major flattened matrix.
+    model_markov_matrix: [0.95, 0.05, 0.05, 0.95]
     
     # Initial Mode Probabilities
     initial_mu: [0.5, 0.5]             # Initial probability for each model
