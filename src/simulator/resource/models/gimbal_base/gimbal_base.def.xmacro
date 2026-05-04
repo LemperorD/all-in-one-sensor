@@ -80,7 +80,7 @@
         </link>
         <!--固定chassis到world-->
         <joint name="world_to_chassis" type="fixed">
-            <parent>world</parent>
+            <parent>ground_plane</parent>
             <child>chassis</child>
         </joint>
     </xmacro_define_block>
