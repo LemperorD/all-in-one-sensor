@@ -20,12 +20,11 @@ fast_lio:
     common:
       lid_topic:  "/livox/lidar"
       imu_topic:  "/livox/imu"
-      time_sync_en: false         # ONLY turn on when external time synchronization is really not possible
-      time_offset_lidar_to_imu: 0.0 # Time offset between lidar and IMU calibrated by other algorithms, e.g. LI-Init (can be found in README).
-                                  # This param will take effect no matter what time_sync_en is. So if the time offset is not known exactly, please set as 0.0
+      time_sync_en: false
+      time_offset_lidar_to_imu: 0.0
 
     preprocess:
-      lidar_type: 1                # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR, 
+      lidar_type: 1                # 1 for Livox serials LiDAR, 2 for Velodyne LiDAR, 3 for ouster LiDAR
       scan_line: 6
       blind: 4.0
 
@@ -42,61 +41,232 @@ fast_lio:
                   0., 1., 0.,
                   0., 0., 1.]
 
-  publish:
+    publish:
       path_en:  false
-      scan_publish_en:  true       # false: close all the point cloud output
-      dense_publish_en: true       # false: low down the points number in a global-frame point clouds scan.
-      scan_bodyframe_pub_en: true  # true: output the point cloud scans in IMU-body-frame
+      scan_publish_en:  true
+      dense_publish_en: true
+      scan_bodyframe_pub_en: true
 
-  pcd_save:
+    pcd_save:
       pcd_save_en: true
-      interval: -1                 # how many LiDAR frames saved in each pcd file; 
-                                  # -1 : all frames will be saved in ONE pcd file, may lead to memory crash when having too much frames.
+      interval: -1
 
-lidar_detector_node:
+# ==================== 2D Object Detection (YOLO) ====================
+yolo_detector:
+  ros__parameters:
+    # Input/Output Topics
+    image_topic: "/camera/image_raw"
+    camera_info_topic: "/camera/camera_info"
+    detections_topic: "/detections_2d"
+    
+    # YOLO Model Configuration
+    model_path: "yolov8s.pt"           # Model weights file path
+    conf_threshold: 0.45               # Confidence threshold for detections
+    iou_threshold: 0.45                # IOU threshold for NMS
+    
+    # Device Configuration
+    device: "cuda:0"                   # "cuda:0" for GPU, "cpu" for CPU
+    half: false                        # Use half precision (FP16) for faster inference
+    
+    # Input Configuration
+    image_size: 640                    # Input image size for YOLO
+    augment: false                     # Use augmentation during inference
+    
+    # Detection Classes to Track
+    # 0: person, 1: bicycle, 2: car, 3: motorcycle, 5: bus, 7: truck, etc.
+    classes: [0, 2, 3, 5, 7]          # Classes to detect (empty = all classes)
+    
+    # Visualization
+    viz_enable: true                   # Publish annotated images
+    viz_topic: "/detections_2d_viz"    # Visualization output topic
+
+# ==================== 3D Object Detection (LiDAR-based) ====================
+lidar_detector:
   ros__parameters:
     # Sensor topic configuration
-    # input point cloud topic from LiDAR/fastlio
     input_pc_topic: "/cloud_registered"
+    output_detections_topic: "/detections_3d"
     
-    # output detected objects topic (3D detections with bbox and confidence)
-    output_detections_topic: "/lidar_detections"
+    # DBSCAN Clustering Parameters
+    dbscan_eps: 0.5                    # Neighborhood radius (meters)
+    dbscan_min_pts: 5                  # Minimum points to form cluster
     
-    # DBSCAN clustering parameters
-    # eps: radius of neighborhood (in meters)
-    # Points within this distance are considered neighbors
-    dbscan_eps: 0.5
+    # Height-based filtering (ground removal)
+    min_height: -0.5                   # Minimum height (meters)
+    max_height: 2.0                    # Maximum height (meters)
     
-    # min_pts: minimum number of points to form a dense region
-    # A point is a core point if it has at least min_pts neighbors
-    dbscan_min_pts: 5
+    # Distance-based filtering
+    min_distance: 0.1                  # Minimum detection distance
+    max_distance: 100.0                # Maximum detection distance
+    
+    # Confidence estimation
+    confidence_point_scale: 25.0       # Confidence scaling factor
+    
+    # Bounding box filtering
+    min_bbox_size: 0.1                 # Minimum bbox dimension (meters)
+    max_bbox_size: 20.0                # Maximum bbox dimension (meters)
 
-    # Heuristic confidence scale: larger values make confidence rise slower
-    confidence_point_scale: 25.0
-
+# ==================== Multi-Sensor Fusion ====================
 fusion_node:
   ros__parameters:
-    # Topic subscriptions and publications
+    # Topic Configuration
     topics:
-      detections_2d: "/detections_2d"      # Input: 2D detections from detector
-      detections_3d: "/detections_3d"      # Input: 3D detections from LiDAR
-      tracks_2d: "/tracks_2d"              # Output: 2D tracks from ByteTrack
-      tracks_3d: "/tracks_3d"              # Output: 3D tracks from AB3DMOT
+      detections_2d: "/detections_2d"  # Input: 2D detections from YOLO
+      detections_3d: "/detections_3d"  # Input: 3D detections from LiDAR
+      image_raw: "/camera/image_raw"   # Input: Raw camera image
+      tracks_2d: "/tracks_2d"          # Output: 2D tracks from ByteTrack
+      tracks_3d: "/tracks_3d"          # Output: 3D tracks from AB3DMOT
+      fused_detections: "/fused_detections"  # Output: Fused detections
 
-    # Camera intrinsics (3x3 K matrix, row-major order)
+    # Camera Intrinsics (3x3 K matrix, row-major order)
     # K = [fx, 0, cx, 0, fy, cy, 0, 0, 1]
-    # Typical values for image resolution 640x480
     camera_K: [640.0, 0.0, 320.0, 0.0, 640.0, 240.0, 0.0, 0.0, 1.0]
+    
+    # Camera Distortion Coefficients
+    camera_D: [0.0, 0.0, 0.0, 0.0, 0.0]
+    
+    # Camera to LiDAR Extrinsic Transformation
+    # Rotation (3x3, row-major)
+    extrinsic_R: [1.0, 0.0, 0.0,
+                  0.0, 1.0, 0.0,
+                  0.0, 0.0, 1.0]
+    # Translation (x, y, z) in meters
+    extrinsic_T: [0.0, 0.0, 0.0]
+    
+    # Fusion Strategy Parameters
+    fusion_iou_threshold: 0.3          # IoU threshold for 2D-3D association
+    fusion_distance_threshold: 1.0     # 3D distance threshold for fusion (meters)
+    fusion_priority: "3d"              # Priority: "2d", "3d", or "weighted"
+    fusion_confidence_weight: 0.7      # Weight for 3D confidence in fusion (0-1)
 
-    # Fusion parameters
-    fusion_iou_threshold: 0.3  # IoU threshold for associating 2D and 3D detections
+    # ByteTrack (2D Tracking) Parameters
+    bytetrack_high_conf_threshold: 0.5    # High confidence threshold
+    bytetrack_low_conf_threshold: 0.1     # Low confidence threshold
+    bytetrack_iou_threshold: 0.3          # IoU threshold for matching
+    bytetrack_track_buffer: 30            # Buffer for lost track recovery (frames)
+    bytetrack_min_track_length: 3         # Minimum track length to keep
 
-    # ByteTrack (2D tracking) parameters
-    bytetrack_high_conf_threshold: 0.5   # Confidence threshold for high confidence detections
-    bytetrack_low_conf_threshold: 0.1    # Confidence threshold for low confidence detections
-    bytetrack_iou_threshold: 0.3         # IoU threshold for matching
+    # AB3DMOT (3D Multi-Object Tracking) Parameters
+    ab3dmot_high_conf_threshold: 0.5      # High confidence threshold
+    ab3dmot_low_conf_threshold: 0.1       # Low confidence threshold
+    ab3dmot_mahal_threshold: 9.4877       # Mahalanobis distance threshold
+    ab3dmot_track_buffer: 30              # Buffer for lost track recovery (frames)
+    ab3dmot_min_track_length: 5           # Minimum track length to keep
+    ab3dmot_max_age: 50                   # Maximum age of track without update
 
-    # AB3DMOT (3D tracking) parameters
-    ab3dmot_high_conf_threshold: 0.5   # Confidence threshold for high confidence detections
-    ab3dmot_low_conf_threshold: 0.1    # Confidence threshold for low confidence detections
-    ab3dmot_mahal_threshold: 9.4877    # Mahalanobis distance threshold (chi-squared for 7-DOF)
+    # Visualization
+    publish_fused_boxes: true             # Publish fused bounding boxes
+    publish_tracking_results: true        # Publish tracking results
+
+# ==================== IMMKF Trajectory Predictor ====================
+immkf_predictor:
+  ros__parameters:
+    # Input/Output Topics
+    tracks_3d_topic: "/tracks_3d"
+    predictions_topic: "/trajectory_predictions"
+    
+    # IMMKF Model Configuration
+    # Interaction Multiple Model (IMM) with Kalman Filtering
+    num_models: 2                      # Number of motion models (CV, CA, etc.)
+    
+    # Constant Velocity Model (Model 0)
+    cv_process_noise: [0.5, 0.5, 0.5]  # Process noise for x, y, z (m²/s⁴)
+    cv_measurement_noise: [0.1, 0.1, 0.1]  # Measurement noise
+    
+    # Constant Acceleration Model (Model 1)
+    ca_process_noise: [0.1, 0.1, 0.1]  # Process noise for acceleration
+    ca_measurement_noise: [0.1, 0.1, 0.1]  # Measurement noise
+    
+    # Model Transition Probabilities
+    # Markov chain for mode switching
+    model_markov_matrix: [[0.95, 0.05],  # From CV: stay 95%, switch 5%
+                          [0.05, 0.95]]  # From CA: stay 95%, switch 5%
+    
+    # Initial Mode Probabilities
+    initial_mu: [0.5, 0.5]             # Initial probability for each model
+    
+    # Prediction Horizon
+    prediction_horizon: 2.0             # Prediction time (seconds)
+    prediction_dt: 0.1                  # Prediction step time (seconds)
+    
+    # Track Association Parameters
+    max_track_age: 100                  # Maximum frames to keep inactive track
+    min_track_hits: 3                   # Minimum hits to start prediction
+    
+    # Filtering Parameters
+    gate_threshold: 3.0                 # Gating threshold (sigma)
+    max_distance: 50.0                  # Maximum association distance (meters)
+    
+    # Output Configuration
+    publish_predictions: true           # Publish trajectory predictions
+    publish_model_probabilities: true   # Publish IMM model probabilities
+    prediction_viz_enable: true         # Enable visualization of predictions
+
+# ==================== MPC Gimbal Planner ====================
+mpc_gimbal_planner:
+  ros__parameters:
+    # Input Topics
+    tracks_topic: "/tracks_3d"
+    predictions_topic: "/trajectory_predictions"
+    
+    # Output Topic
+    control_cmd_topic: "/gimbal_control_cmd"
+    
+    # MPC Configuration
+    # Model Predictive Control Parameters
+    mpc_horizon: 10                     # Prediction horizon (steps)
+    mpc_dt: 0.1                         # Control step time (seconds)
+    mpc_iterations: 10                  # Iterations for optimization solver
+    
+    # Cost Function Weights
+    # J = w_pos*||pos_error||² + w_vel*||vel_error||² + w_control*||u||²
+    weight_position: 1.0                # Position tracking weight
+    weight_velocity: 0.5                # Velocity tracking weight
+    weight_control: 0.1                 # Control effort weight
+    weight_terminal: 2.0                # Terminal cost weight
+    
+    # Gimbal Control Constraints
+    # Gimbal movement limits
+    max_pan_speed: 2.0                  # Max pan speed (rad/s)
+    max_tilt_speed: 2.0                 # Max tilt speed (rad/s)
+    max_pan_acceleration: 5.0           # Max pan acceleration (rad/s²)
+    max_tilt_acceleration: 5.0          # Max tilt acceleration (rad/s²)
+    
+    # Pan/Tilt angle limits
+    pan_range: [-3.14159, 3.14159]      # Pan angle range (radians)
+    tilt_range: [-1.57080, 1.57080]     # Tilt angle range (radians, -90 to +90)
+    
+    # Target Following Parameters
+    # Gimbal control strategy
+    target_priority: "closest"          # Priority: "closest", "fastest", "highest_confidence"
+    confidence_threshold: 0.3           # Minimum confidence to track
+    
+    # Gimbal Smoothing
+    velocity_smoothing_window: 5        # Moving average window for smooth tracking
+    
+    # Dead Zone (in degrees) - gimbal stops tracking if target is within this zone
+    pan_deadzone: 2.0                   # Pan dead zone (degrees)
+    tilt_deadzone: 2.0                  # Tilt dead zone (degrees)
+    
+    # Feed-Forward Configuration
+    feedforward_enabled: true           # Enable velocity feed-forward
+    feedforward_gain: 0.5               # Feed-forward gain
+    
+    # PID Backup Controllers (if MPC fails)
+    # Pan/Tilt PID parameters
+    pid_pan_kp: 2.0
+    pid_pan_ki: 0.1
+    pid_pan_kd: 0.5
+    
+    pid_tilt_kp: 2.0
+    pid_tilt_ki: 0.1
+    pid_tilt_kd: 0.5
+    
+    # Tracking Mode Configuration
+    tracking_mode: "predictive"         # "reactive", "predictive", "hybrid"
+    predict_ahead_time: 0.5             # Prediction time for trajectory (seconds)
+    
+    # Output Configuration
+    publish_gimbal_state: true          # Publish gimbal state feedback
+    publish_tracking_error: true        # Publish tracking error metrics
+    visualization_enable: true          # Enable visualization markers
