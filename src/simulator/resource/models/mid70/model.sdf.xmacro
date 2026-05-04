@@ -44,9 +44,9 @@
               <max_angle>0.614355896702</max_angle>
             </horizontal>
             <vertical>
-              <samples>32</samples>
-              <min_angle>-0.12217304764</min_angle>
-              <max_angle>0.90757121104</max_angle>
+              <samples>128</samples>
+              <min_angle>-0.614355896702</min_angle>
+              <max_angle>0.614355896702</max_angle>
             </vertical>
           </scan>
           <range>
