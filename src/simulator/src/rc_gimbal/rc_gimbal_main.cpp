@@ -11,6 +11,8 @@ RcGimbalMain::RcGimbalMain(const char *file_name)
   js_open(file_name_);
   ioctl(js_fd_, JSIOCGAXES, &axis_count_);
   ioctl(js_fd_, JSIOCGBUTTONS, &button_count_);
+  axis_state_.resize(axis_count_);
+  button_state_.resize(button_count_);
 
   // Get Name
   char name_c_str[1024];
@@ -81,26 +83,16 @@ void RcGimbalMain::timerCallback() {
   struct js_event event;
   ssize_t len = read(js_fd_, &event, sizeof(event));
 
-  if (len < 0){
+  if (len < 0) {
     std::ostringstream str;
     str << file_name_ << ": " << strerror(errno);
     throw std::runtime_error(str.str());
   } else if (len == sizeof(event)) {
-    if (event.type & JS_EVENT_AXIS)
-    {
-      axis_state[event.number] = event.value;
-      axis_move(event.number, event.value);
-    }
-    else if (event.type & JS_EVENT_BUTTON)
-    {
-      button_move(event.number, event.value);
-    }
+    // 成功读取到事件，更新状态
+    if (event.type & JS_EVENT_AXIS) axis_state_[event.number] = event.value;
+    else if (event.type & JS_EVENT_BUTTON) button_state_[event.number] = event.value;
   }
-  else
-  {
-    throw std::runtime_error("RcGimbalMain::timerCallback(): unknown read error");
-  }
-
+  else throw std::runtime_error("RcGimbalMain::timerCallback(): unknown read error");
 }
 
 void RcGimbalMain::tryReconnect() {
@@ -109,19 +101,8 @@ void RcGimbalMain::tryReconnect() {
     close(js_fd_);
     js_fd_ = -1;
   }
-  buffer_index_ = 0;
 
-  if (!serial_port_.empty()) {
-    openSerialPort(serial_port_, baud_rate_);
-  } else {
-    std::cout << termcolor::yellow << "No serial port specified, auto-detecting..." << termcolor::reset << std::endl;
-    std::string port = findSerialPort();
-    if (!port.empty()) {
-      openSerialPort(port, baud_rate_);
-    } else {
-      std::cerr << termcolor::red << "waiting..." << termcolor::reset <<std::endl;
-    }
-  }
+  js_open(file_name_);
 
   last_reconnect_time_ = std::chrono::steady_clock::now();
   last_received_time_ = std::chrono::steady_clock::now();
