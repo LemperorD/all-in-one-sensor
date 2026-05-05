@@ -1,36 +1,117 @@
 #include "rc_gimbal/rc_gimbal_main.hpp"
 
-int main(void)  
-{  
-    int xbox_fd ;  
-    xbox_map_t map;  
-    int len, type;  
-    int axis_value, button_value;  
-    int number_of_axis, number_of_buttons ;  
+namespace rc_gimbal
+{
 
-    memset(&map, 0, sizeof(xbox_map_t));  
+RcGimbalMain::RcGimbalMain(const char *file_name)
+  : file_name_(file_name)
+{
+  time_thread_ = std::thread(&RcGimbalMain::timerThread, this);
 
-    xbox_fd = xbox_open("/dev/input/js0");  
-    if(xbox_fd < 0)  
-    {  
-        return -1;  
-    }  
+  last_received_time_ = std::chrono::steady_clock::now();
+  last_reconnect_time_ = std::chrono::steady_clock::now();
 
-    while(1)  
-    {  
-        len = xbox_map_read(xbox_fd, &map);  
-        if (len < 0)  
-        {  
-            usleep(10*1000);  
-            continue;  
-        }  
+  std::cout << "\033[32m"
+            << "RcGimbalMain constructor called with file name: " << file_name_ 
+            << "\033[0m" <<std::endl;
+}
 
-        printf("\rTime:%8d A:%d B:%d X:%d Y:%d LB:%d RB:%d start:%d back:%d home:%d LO:%d RO:%d XX:%-6d YY:%-6d LX:%-6d LY:%-6d RX:%-6d RY:%-6d LT:%-6d RT:%-6d",  
-                map.time, map.a, map.b, map.x, map.y, map.lb, map.rb, map.start, map.back, map.home, map.lo, map.ro,  
-                map.xx, map.yy, map.lx, map.ly, map.rx, map.ry, map.lt, map.rt);  
-        fflush(stdout);  
-    }  
+RcGimbalMain::~RcGimbalMain()
+{
+  if (timer_thread_.joinable()) timer_thread_.join();
 
-    xbox_close(xbox_fd);  
-    return 0;  
-}  
+  if (js_fd_ >= 0) {
+    if (close(js_fd_) < 0) {
+      std::cerr << "\033[31m" << "Failed to close joystick device, error: " << strerror(errno) << "\033[0m" << std::endl;
+    }
+    js_fd_ = -1;
+    std::cout << "\033[32m" << file_name_ << " closed" << "\033[0m" << std::endl;
+  }
+
+  std::cout << "\033[32m" << "RcGimbalMain destructor called" << "\033[0m" << std::endl;
+}
+
+int RcGimbalMain::js_open(const char *file_name)
+{
+  js_fd_ = open(file_name, O_RDONLY);
+  if (js_fd_ < 0) {
+    std::cerr << "\033[31m" << "Failed to open joystick device: " << file_name << ", error: " << strerror(errno) << "\033[0m" << std::endl;
+    return -1;
+  }
+  return js_fd_;
+}
+
+void RcGimbalMain::timerThread()
+{
+  timerCallback();
+  std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1ms
+}
+
+void RcGimbalMain::timerCallback() {
+  if (js_fd_ < 0) {
+    if (std::chrono::steady_clock::now() - last_reconnect_time_ > std::chrono::seconds(3)) {
+      std::cerr << "Joystick not available, trying reconnect" << std::endl;
+      tryReconnect();
+    }
+    return;
+  }
+  if (std::chrono::steady_clock::now() - last_received_time_ > std::chrono::seconds(3)) {
+    if (std::chrono::steady_clock::now() - last_reconnect_time_ > std::chrono::seconds(3)) {
+      std::cerr << "No data received, trying reconnect" << std::endl;
+      tryReconnect();
+    }
+    return;
+  }
+
+  struct js_event event;
+
+  ssize_t len = read(js_fd_, &event, sizeof(event));
+
+  if (len < 0){
+    std::ostringstream str;
+    str << filename << ": " << strerror(errno);
+    throw std::runtime_error(str.str());
+  } else if (len == sizeof(event)) {
+    if (event.type & JS_EVENT_AXIS)
+    {
+      axis_state[event.number] = event.value;
+      axis_move(event.number, event.value);
+    }
+    else if (event.type & JS_EVENT_BUTTON)
+    {
+      button_move(event.number, event.value);
+    }
+  }
+  else
+  {
+    throw std::runtime_error("RcGimbalMain::timerCallback(): unknown read error");
+  }
+
+}
+
+void RcGimbalMain::tryReconnect() {
+  last_reconnect_time_ = std::chrono::steady_clock::now();
+  if (js_fd_ >= 0) {
+    close(js_fd_);
+    js_fd_ = -1;
+  }
+  buffer_index_ = 0;
+
+  if (!serial_port_.empty()) {
+    openSerialPort(serial_port_, baud_rate_);
+  } else {
+    std::cout << termcolor::yellow << "No serial port specified, auto-detecting..." << termcolor::reset << std::endl;
+    std::string port = findSerialPort();
+    if (!port.empty()) {
+      openSerialPort(port, baud_rate_);
+    } else {
+      std::cerr << termcolor::red << "waiting..." << termcolor::reset <<std::endl;
+    }
+  }
+
+  last_reconnect_time_ = std::chrono::steady_clock::now();
+  last_received_time_ = std::chrono::steady_clock::now();
+}
+
+
+} // namespace rc_gimbal
