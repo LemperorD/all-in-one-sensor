@@ -74,6 +74,7 @@ def generate_launch_description():
         executable="fastlio_mapping",
         name="fast_lio",
         output="screen",
+        namespace=namespace,
         parameters=[configured_params],
     )
 
