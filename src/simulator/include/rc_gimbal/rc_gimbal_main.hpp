@@ -15,32 +15,6 @@
 namespace rc_gimbal
 {
 
-typedef struct js_map  
-{  
-    int     time;  
-    int     a;  
-    int     b;  
-    int     x;  
-    int     y;  
-    int     lb;  
-    int     rb;  
-    int     start;  
-    int     back;  
-    int     home;  
-    int     lo;  
-    int     ro;  
-
-    int     lx;  
-    int     ly;  
-    int     rx;  
-    int     ry;  
-    int     lt;  
-    int     rt;  
-    int     xx;  
-    int     yy;  
-
-} js_map_t;
-
 class RcGimbalMain
 {
 public: // constructor and destructor
@@ -50,18 +24,21 @@ public: // constructor and destructor
 public: // 公共接口
   int get_fd() const { return js_fd_; }
 
-private: // 打开和关闭设备的接口
+private: // 打开设备
   int js_open(const char *file_name);
-  int js_map_read(int js_fd, js_map_t *map);
 
 private: // 轮询线程
   void timerThread();
   void timerCallback();
   void tryReconnect();
 
-private:
+private: // 成员变量
   char *file_name_;
   int js_fd_ = -1;
+
+  uint8_t axis_count_ = 0;
+  uint8_t button_count_ = 0;
+
   std::thread timer_thread_;
   std::chrono::steady_clock::time_point last_received_time_;
   std::chrono::steady_clock::time_point last_reconnect_time_;

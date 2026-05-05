@@ -1,11 +1,26 @@
 #include "rc_gimbal/rc_gimbal_main.hpp"
 
+// #include <linux/joystick.h>
+
 namespace rc_gimbal
 {
 
 RcGimbalMain::RcGimbalMain(const char *file_name)
   : file_name_(file_name)
 {
+  js_open(file_name_);
+  ioctl(js_fd_, JSIOCGAXES, &axis_count_);
+  ioctl(js_fd_, JSIOCGBUTTONS, &button_count_);
+
+  // Get Name
+  char name_c_str[1024];
+  if (ioctl(js_fd_, JSIOCGNAME(sizeof(name_c_str)), name_c_str) < 0)
+  {
+    std::ostringstream str;
+    str << file_name_ << ": " << strerror(errno);
+    throw std::runtime_error(str.str());
+  }
+
   time_thread_ = std::thread(&RcGimbalMain::timerThread, this);
 
   last_received_time_ = std::chrono::steady_clock::now();
@@ -64,12 +79,11 @@ void RcGimbalMain::timerCallback() {
   }
 
   struct js_event event;
-
   ssize_t len = read(js_fd_, &event, sizeof(event));
 
   if (len < 0){
     std::ostringstream str;
-    str << filename << ": " << strerror(errno);
+    str << file_name_ << ": " << strerror(errno);
     throw std::runtime_error(str.str());
   } else if (len == sizeof(event)) {
     if (event.type & JS_EVENT_AXIS)
