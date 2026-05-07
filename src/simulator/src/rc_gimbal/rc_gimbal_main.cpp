@@ -23,6 +23,7 @@ RcGimbalMain::RcGimbalMain(const char *file_name)
     throw std::runtime_error(str.str());
   }
 
+  is_running_ = true;
   timer_thread_ = std::thread(&RcGimbalMain::timerThread, this);
 
   last_received_time_ = std::chrono::steady_clock::now();
@@ -35,6 +36,7 @@ RcGimbalMain::RcGimbalMain(const char *file_name)
 
 RcGimbalMain::~RcGimbalMain()
 {
+  is_running_ = false;
   if (timer_thread_.joinable()) timer_thread_.join();
 
   if (js_fd_ >= 0) {
@@ -50,7 +52,9 @@ RcGimbalMain::~RcGimbalMain()
 
 int RcGimbalMain::js_open(const char *file_name)
 {
-  js_fd_ = open(file_name, O_RDONLY);
+  // Open joystick device in non-blocking mode so reads return immediately when
+  // there is no data instead of blocking the timer thread.
+  js_fd_ = open(file_name, O_RDONLY | O_NONBLOCK);
   if (js_fd_ < 0) {
     std::cerr << "\033[31m" << "Failed to open joystick device: " << file_name << ", error: " << strerror(errno) << "\033[0m" << std::endl;
     return -1;
@@ -60,7 +64,7 @@ int RcGimbalMain::js_open(const char *file_name)
 
 void RcGimbalMain::timerThread()
 {
-  while (true) {
+  while (is_running_) {
     timerCallback();
     std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1ms
   }
@@ -68,15 +72,8 @@ void RcGimbalMain::timerThread()
 
 void RcGimbalMain::timerCallback() {
   if (js_fd_ < 0) {
-    if (std::chrono::steady_clock::now() - last_reconnect_time_ > std::chrono::seconds(3)) {
+    if (std::chrono::steady_clock::now() - last_reconnect_time_ > std::chrono::seconds(10)) {
       std::cerr << "Joystick not available, trying reconnect" << std::endl;
-      tryReconnect();
-    }
-    return;
-  }
-  if (std::chrono::steady_clock::now() - last_received_time_ > std::chrono::seconds(3)) {
-    if (std::chrono::steady_clock::now() - last_reconnect_time_ > std::chrono::seconds(3)) {
-      std::cerr << "No data received, trying reconnect" << std::endl;
       tryReconnect();
     }
     return;
@@ -86,15 +83,29 @@ void RcGimbalMain::timerCallback() {
   ssize_t len = read(js_fd_, &event, sizeof(event));
 
   if (len < 0) {
+    // Non-blocking read: if no data available, just return and wait.
+    if (errno == EAGAIN || errno == EWOULDBLOCK) {
+      return;
+    }
     std::ostringstream str;
     str << file_name_.c_str() << ": " << strerror(errno);
     throw std::runtime_error(str.str());
   } else if (len == sizeof(event)) {
-    // 成功读取到事件，更新状态
-    if (event.type & JS_EVENT_AXIS) axis_state_[event.number] = event.value;
-    else if (event.type & JS_EVENT_BUTTON) button_state_[event.number] = event.value;
+    // 成功读取到事件，更新接收时间并更新状态
+    last_received_time_ = std::chrono::steady_clock::now();
+    uint8_t etype = event.type & ~JS_EVENT_INIT; // mask init flag
+    if (etype & JS_EVENT_AXIS) {
+      if (event.number >= 0 && event.number < (int)axis_state_.size())
+        axis_state_[event.number] = event.value;
+    } else if (etype & JS_EVENT_BUTTON) {
+      if (event.number >= 0 && event.number < (int)button_state_.size())
+        button_state_[event.number] = event.value;
+    }
+  } else {
+    std::ostringstream str;
+    str << "RcGimbalMain::timerCallback(): unknown read length " << len;
+    throw std::runtime_error(str.str());
   }
-  else throw std::runtime_error("RcGimbalMain::timerCallback(): unknown read error");
 }
 
 void RcGimbalMain::tryReconnect() {

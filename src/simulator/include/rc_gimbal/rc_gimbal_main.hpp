@@ -15,6 +15,7 @@
 #include <iostream>
 #include <sstream>
 #include <chrono>
+#include <atomic>
 
 namespace rc_gimbal
 {
@@ -60,6 +61,7 @@ private: // 成员变量
   std::thread timer_thread_;
   std::chrono::steady_clock::time_point last_received_time_;
   std::chrono::steady_clock::time_point last_reconnect_time_;
+  std::atomic<bool> is_running_{false};
 
 };
 

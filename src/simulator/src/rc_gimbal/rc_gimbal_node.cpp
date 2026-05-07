@@ -1,5 +1,7 @@
 #include "rc_gimbal/rc_gimbal_node.hpp"
 #include <iostream>
+#include <chrono>
+#include <thread>
 
 namespace rc_gimbal
 {
@@ -9,12 +11,18 @@ RcGimbalNode::RcGimbalNode(const rclcpp::NodeOptions & options)
 {
   onConfigure(); // 配置参数
   rc_gimbal_main_ = std::make_shared<RcGimbalMain>(file_name_.c_str());
-  test_thread_ = std::thread(&RcGimbalNode::test_thread, this);
+  
+  // Initialize gimbal command publisher
+  gimbal_cmd_pub_ = this->create_publisher<simulator::msg::GimbalCmd>(
+    gimbal_cmd_topic_, rclcpp::QoS(10));
+  
+  // Start remote control thread
+  ctrl_thread_ = std::thread(&RcGimbalNode::ctrl_thread, this);
 }
 
 RcGimbalNode::~RcGimbalNode()
 {
-  if (test_thread_.joinable()) test_thread_.join();
+  if (ctrl_thread_.joinable()) ctrl_thread_.join();
   rc_gimbal_main_.reset();
   std::cout << "RcGimbalNode destructor called" << std::endl;
 }
@@ -23,12 +31,53 @@ void RcGimbalNode::onConfigure()
 {
   this->declare_parameter<std::string>("file_name", "/dev/input/js0");
   this->get_parameter("file_name", file_name_);
+  
+  this->declare_parameter<std::string>("gimbal_cmd_topic", "gimbal_cmd");
+  this->get_parameter("gimbal_cmd_topic", gimbal_cmd_topic_);
 }
 
-void RcGimbalNode::test_thread()
+void RcGimbalNode::ctrl_thread()
 {
-  std::cout << "Axis1: " << rc_gimbal_main_->get_axis_state(1) << std::endl;
-  std::cout << "Axis2: " << rc_gimbal_main_->get_axis_state(2) << std::endl;
+  while (rclcpp::ok()) {
+    if (!rc_gimbal_main_) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      continue;
+    }
+    
+    // Read button2 state for mode toggle
+    bool button2_pressed = rc_gimbal_main_->get_button_state(2);
+    
+    // Toggle remote_mode on button2 state change (rising edge)
+    if (button2_pressed && !last_button2_state_) {
+      remote_mode_ = !remote_mode_;
+      std::cout << "[RcGimbal] Remote mode: " << (remote_mode_ ? "ON" : "OFF") << std::endl;
+    }
+    last_button2_state_ = button2_pressed;
+    
+    // If in remote mode, read axis values and send gimbal command
+    if (remote_mode_) {
+      int16_t axis1 = rc_gimbal_main_->get_axis_state(1);  // Yaw
+      int16_t axis2 = rc_gimbal_main_->get_axis_state(2);  // Pitch
+      
+      // Create and publish gimbal command (velocity control mode)
+      auto gimbal_cmd = simulator::msg::GimbalCmd();
+      gimbal_cmd.tid = 0;
+      gimbal_cmd.yaw_type = simulator::msg::GimbalCmd::VELOCITY;
+      gimbal_cmd.pitch_type = simulator::msg::GimbalCmd::VELOCITY;
+      
+      // Set velocity using axis values (normalize from int16 [-32768, 32767] to [-1, 1])
+      gimbal_cmd.velocity.yaw = axis1 / 32768.0f;
+      gimbal_cmd.velocity.pitch = axis2 / 32768.0f;
+      
+      gimbal_cmd_pub_->publish(gimbal_cmd);
+      
+      // Debug output
+      std::cout << "[RcGimbal] Yaw velocity: " << gimbal_cmd.velocity.yaw 
+                << ", Pitch velocity: " << gimbal_cmd.velocity.pitch << std::endl;
+    }
+    
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+  }
 }
 
 } // namespace rc_gimbal
