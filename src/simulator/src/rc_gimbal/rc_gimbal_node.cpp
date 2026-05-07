@@ -32,7 +32,7 @@ void RcGimbalNode::onConfigure()
   this->declare_parameter<std::string>("file_name", "/dev/input/js0");
   this->get_parameter("file_name", file_name_);
   
-  this->declare_parameter<std::string>("gimbal_cmd_topic", "gimbal_cmd");
+  this->declare_parameter<std::string>("gimbal_cmd_topic", "/all_in_one_sensor/robot_base/gimbal_cmd");
   this->get_parameter("gimbal_cmd_topic", gimbal_cmd_topic_);
 }
 
@@ -59,21 +59,21 @@ void RcGimbalNode::ctrl_thread()
       int16_t axis1 = rc_gimbal_main_->get_axis_state(1);  // Yaw
       int16_t axis2 = rc_gimbal_main_->get_axis_state(2);  // Pitch
       
-      // Create and publish gimbal command (velocity control mode)
+      // Create and publish gimbal command using position control (ABSOLUTE_ANGLE)
       auto gimbal_cmd = simulator::msg::GimbalCmd();
       gimbal_cmd.tid = 0;
-      gimbal_cmd.yaw_type = simulator::msg::GimbalCmd::VELOCITY;
-      gimbal_cmd.pitch_type = simulator::msg::GimbalCmd::VELOCITY;
-      
-      // Set velocity using axis values (normalize from int16 [-32768, 32767] to [-1, 1])
-      gimbal_cmd.velocity.yaw = axis1 / 32768.0f;
-      gimbal_cmd.velocity.pitch = axis2 / 32768.0f;
-      
+      gimbal_cmd.yaw_type = simulator::msg::GimbalCmd::ABSOLUTE_ANGLE;
+      gimbal_cmd.pitch_type = simulator::msg::GimbalCmd::ABSOLUTE_ANGLE;
+
+      // Map axis int16 -> normalized position in [-1,1]
+      gimbal_cmd.position.yaw = -static_cast<float>(axis1) / 32768.0f;
+      gimbal_cmd.position.pitch = static_cast<float>(axis2) / 32768.0f;
+
       gimbal_cmd_pub_->publish(gimbal_cmd);
-      
+
       // Debug output
-      std::cout << "[RcGimbal] Yaw velocity: " << gimbal_cmd.velocity.yaw 
-                << ", Pitch velocity: " << gimbal_cmd.velocity.pitch << std::endl;
+      std::cout << "[RcGimbal] Yaw pos: " << gimbal_cmd.position.yaw 
+            << ", Pitch pos: " << gimbal_cmd.position.pitch << std::endl;
     }
     
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
