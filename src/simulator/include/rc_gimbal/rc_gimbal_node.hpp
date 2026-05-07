@@ -21,10 +21,12 @@ public:
 
 private:
   void onConfigure();
+  void test_thread();
 
 private:
   std::shared_ptr<RcGimbalMain> rc_gimbal_main_;
-  char* file_name_;
+  std::string file_name_;
+  std::thread test_thread_;
 };
 
 } // namespace rc_gimbal

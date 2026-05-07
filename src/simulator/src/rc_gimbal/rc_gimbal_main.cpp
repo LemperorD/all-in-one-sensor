@@ -8,7 +8,7 @@ namespace rc_gimbal
 RcGimbalMain::RcGimbalMain(const char *file_name)
   : file_name_(file_name)
 {
-  js_open(file_name_);
+  js_open(file_name_.c_str());
   ioctl(js_fd_, JSIOCGAXES, &axis_count_);
   ioctl(js_fd_, JSIOCGBUTTONS, &button_count_);
   axis_state_.resize(axis_count_);
@@ -19,18 +19,18 @@ RcGimbalMain::RcGimbalMain(const char *file_name)
   if (ioctl(js_fd_, JSIOCGNAME(sizeof(name_c_str)), name_c_str) < 0)
   {
     std::ostringstream str;
-    str << file_name_ << ": " << strerror(errno);
+    str << file_name_.c_str() << ": " << strerror(errno);
     throw std::runtime_error(str.str());
   }
 
-  time_thread_ = std::thread(&RcGimbalMain::timerThread, this);
+  timer_thread_ = std::thread(&RcGimbalMain::timerThread, this);
 
   last_received_time_ = std::chrono::steady_clock::now();
   last_reconnect_time_ = std::chrono::steady_clock::now();
 
   std::cout << "\033[32m"
-            << "RcGimbalMain constructor called with file name: " << file_name_ 
-            << "\033[0m" <<std::endl;
+            << "RcGimbalMain constructor called with file name: " << file_name_.c_str() 
+            << "\033[0m" << std::endl;
 }
 
 RcGimbalMain::~RcGimbalMain()
@@ -42,7 +42,7 @@ RcGimbalMain::~RcGimbalMain()
       std::cerr << "\033[31m" << "Failed to close joystick device, error: " << strerror(errno) << "\033[0m" << std::endl;
     }
     js_fd_ = -1;
-    std::cout << "\033[32m" << file_name_ << " closed" << "\033[0m" << std::endl;
+    std::cout << "\033[32m" << file_name_.c_str() << " closed" << "\033[0m" << std::endl;
   }
 
   std::cout << "\033[32m" << "RcGimbalMain destructor called" << "\033[0m" << std::endl;
@@ -60,8 +60,10 @@ int RcGimbalMain::js_open(const char *file_name)
 
 void RcGimbalMain::timerThread()
 {
-  timerCallback();
-  std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1ms
+  while (true) {
+    timerCallback();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1)); // 1ms
+  }
 }
 
 void RcGimbalMain::timerCallback() {
@@ -85,7 +87,7 @@ void RcGimbalMain::timerCallback() {
 
   if (len < 0) {
     std::ostringstream str;
-    str << file_name_ << ": " << strerror(errno);
+    str << file_name_.c_str() << ": " << strerror(errno);
     throw std::runtime_error(str.str());
   } else if (len == sizeof(event)) {
     // 成功读取到事件，更新状态
@@ -102,7 +104,7 @@ void RcGimbalMain::tryReconnect() {
     js_fd_ = -1;
   }
 
-  js_open(file_name_);
+  js_open(file_name_.c_str());
 
   last_reconnect_time_ = std::chrono::steady_clock::now();
   last_received_time_ = std::chrono::steady_clock::now();

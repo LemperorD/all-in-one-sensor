@@ -104,9 +104,28 @@ add_executable(gz_gimbal src/gz_gimbal/gz_gimbal_main.cpp)
 target_link_libraries(gz_gimbal gz_gimbal_node)
 rclcpp_components_register_nodes(gz_gimbal_node "gz_gimbal::GzGimbalNode")
 
+# Create rc_gimbal lib
+add_library(rc_gimbal_node SHARED
+  src/rc_gimbal/rc_gimbal_main.cpp
+  src/rc_gimbal/rc_gimbal_node.cpp
+)
+set(dependencies
+  rclcpp
+  rclcpp_components
+)
+ament_target_dependencies(rc_gimbal_node ${dependencies})
+rosidl_target_interfaces(rc_gimbal_node
+  ${SIM_INTERFACES} "rosidl_typesupport_cpp")
+rclcpp_components_register_nodes(rc_gimbal_node "rc_gimbal::RcGimbalNode")
+
 install(TARGETS
       gz_gimbal
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(TARGETS
+      rc_gimbal_node
+  DESTINATION lib
 )
 
 ament_auto_package(

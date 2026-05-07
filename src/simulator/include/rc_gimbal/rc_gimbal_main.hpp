@@ -12,6 +12,9 @@
 #include <linux/input.h>
 #include <linux/joystick.h>
 #include <thread>
+#include <iostream>
+#include <sstream>
+#include <chrono>
 
 namespace rc_gimbal
 {
@@ -46,7 +49,7 @@ private: // 轮询线程
   void tryReconnect();
 
 private: // 成员变量
-  char *file_name_;
+  std::string file_name_;
   int js_fd_ = -1;
 
   std::vector<int16_t> axis_state_;
