@@ -78,6 +78,25 @@ def generate_launch_description():
         parameters=[configured_params],
     )
 
+    yolo_launch = IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            os.path.join(
+                get_package_share_directory("yolo_bringup"),
+                "launch",
+                "bringup.launch.py",
+            )
+        ),
+        launch_arguments={
+            "namespace": namespace,
+
+            "params_file": os.path.join(
+                get_package_share_directory("yolo_bringup"),
+                "config",
+                "yolo.yaml",
+            ),
+        }.items(),
+    )
+
     container = Node(
         package="rclcpp_components",
         executable="component_container",
@@ -147,6 +166,7 @@ def generate_launch_description():
     # Add Standalone Nodes (Non-component executables)
     ld.add_action(start_velodyne_convert_tool)
     ld.add_action(start_fast_lio_node)
+    ld.add_action(yolo_launch)
 
     # Add Component Container and Load Components
     ld.add_action(container)
