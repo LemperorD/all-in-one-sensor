@@ -28,3 +28,10 @@
   ros_type_name: "sensor_msgs/msg/CameraInfo"
   gz_type_name: "ignition.msgs.CameraInfo"
   direction: "GZ_TO_ROS"
+
+# Mapping for iris model pose command: publish geometry_msgs/PoseStamped on /iris/pose_cmd
+- ros_topic_name: "/iris/pose_cmd"
+  gz_topic_name: "/world/gimbal_sim_world/model/iris/pose_cmd"
+  ros_type_name: "geometry_msgs/msg/PoseStamped"
+  gz_type_name: "ignition.msgs.Pose"
+  direction: "ROS_TO_GZ"
