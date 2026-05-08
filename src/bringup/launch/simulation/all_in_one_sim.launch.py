@@ -83,7 +83,7 @@ def generate_launch_description():
             os.path.join(
                 get_package_share_directory("yolo_bringup"),
                 "launch",
-                "bringup.launch.py",
+                "yolo_uav_detect.launch.py",
             )
         ),
         launch_arguments={
