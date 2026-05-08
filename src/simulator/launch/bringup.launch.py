@@ -110,6 +110,29 @@ def generate_launch_description():
 		parameters=[{"config_file": aft_replace_ros_bridge_params}],
 	)
 
+	# Spawn iris model and trajectory node
+	default_model = os.path.join(pkg_simulator, "resource", "models", "iris", "model.sdf")
+
+	spawn_iris = Node(
+		package="ros_gz_sim",
+		executable="create",
+		arguments=[
+			"-file",
+			default_model,
+			"-name",
+			"iris",
+			"-allow_renaming",
+			"true",
+		],
+	)
+
+	trajectory_node = Node(
+		package="simulator",
+		executable="trajectory_node",
+		output="screen",
+		parameters=[{"model_name": "iris", "world_name": "gimbal_sim_world"}],
+	)
+
 	robot_ign_clock_bridge = Node(
 		package="ros_gz_bridge",
 		executable="parameter_bridge",
@@ -163,6 +186,8 @@ def generate_launch_description():
 	ld.add_action(robot_base)
 	ld.add_action(robot_state_publisher)
 	ld.add_action(robot_ign_bridge)
+	ld.add_action(spawn_iris)
+	ld.add_action(trajectory_node)
 	ld.add_action(set_performer_service)
 
 	return ld
