@@ -10,8 +10,18 @@ namespace sensor_fusion
 FusionNode::FusionNode(const rclcpp::NodeOptions & options)
 : Node("sensor_fusion_node_node", options)
 {
-  std::cout << "\033[32m" << "Starting FusionNode" << "\033[0m" << std::endl;
-  onConfigure(); // 配置参数
+    std::cout << "\033[32m" << "Starting FusionNode" << "\033[0m" << std::endl;
+    onConfigure(); // 配置参数
+
+    // Configure ByteTrack
+    bytetrack_.high_conf_threshold = bytetrack_high_conf_;
+    bytetrack_.low_conf_threshold = bytetrack_low_conf_;
+    bytetrack_.iou_threshold = bytetrack_iou_thresh_;
+
+    // Configure AB3DMOT
+    ab3dmot_.high_conf_threshold = ab3dmot_high_conf_;
+    ab3dmot_.low_conf_threshold = ab3dmot_low_conf_;
+    ab3dmot_.mahal_threshold = ab3dmot_mahal_thresh_;
 }
 
 FusionNode::~FusionNode()
@@ -25,15 +35,10 @@ void FusionNode::onConfigure()
     this->declare_parameter<std::string>("topics.detections_3d", "/detections_3d");
     this->declare_parameter<std::string>("topics.tracks_2d", "/tracks_2d");
     this->declare_parameter<std::string>("topics.tracks_3d", "/tracks_3d");
-    
     topic_detections_2d_ = this->get_parameter("topics.detections_2d").as_string();
     topic_detections_3d_ = this->get_parameter("topics.detections_3d").as_string();
     topic_tracks_2d_ = this->get_parameter("topics.tracks_2d").as_string();
     topic_tracks_3d_ = this->get_parameter("topics.tracks_3d").as_string();
-    
-    RCLCPP_INFO(this->get_logger(), "Topic config: 2D dets=%s, 3D dets=%s, 2D tracks=%s, 3D tracks=%s",
-                topic_detections_2d_.c_str(), topic_detections_3d_.c_str(),
-                topic_tracks_2d_.c_str(), topic_tracks_3d_.c_str());
 
     // Declare and read camera intrinsics parameters
     this->declare_parameter<std::vector<double>>("camera.K", std::vector<double>{640, 0, 320, 0, 640, 240, 0, 0, 1});
@@ -61,31 +66,17 @@ void FusionNode::onConfigure()
     this->declare_parameter<float>("bytetrack.high_conf_threshold", 0.5f);
     this->declare_parameter<float>("bytetrack.low_conf_threshold", 0.1f);
     this->declare_parameter<float>("bytetrack.iou_threshold", 0.3f);
-    
     bytetrack_high_conf_ = this->get_parameter("bytetrack.high_conf_threshold").as_double();
     bytetrack_low_conf_ = this->get_parameter("bytetrack.low_conf_threshold").as_double();
     bytetrack_iou_thresh_ = this->get_parameter("bytetrack.iou_threshold").as_double();
-    
-    // Configure ByteTrack
-    bytetrack_.high_conf_threshold = bytetrack_high_conf_;
-    bytetrack_.low_conf_threshold = bytetrack_low_conf_;
-    bytetrack_.iou_threshold = bytetrack_iou_thresh_;
 
     // AB3DMOT parameters
     this->declare_parameter<float>("ab3dmot.high_conf_threshold", 0.5f);
     this->declare_parameter<float>("ab3dmot.low_conf_threshold", 0.1f);
     this->declare_parameter<float>("ab3dmot.mahal_threshold", 9.4877f);
-    
     ab3dmot_high_conf_ = this->get_parameter("ab3dmot.high_conf_threshold").as_double();
     ab3dmot_low_conf_ = this->get_parameter("ab3dmot.low_conf_threshold").as_double();
     ab3dmot_mahal_thresh_ = this->get_parameter("ab3dmot.mahal_threshold").as_double();
-    
-    // Configure AB3DMOT
-    ab3dmot_.high_conf_threshold = ab3dmot_high_conf_;
-    ab3dmot_.low_conf_threshold = ab3dmot_low_conf_;
-    ab3dmot_.mahal_threshold = ab3dmot_mahal_thresh_;
-
-    RCLCPP_INFO(this->get_logger(), "FusionNode configured successfully");
 }
 
 void FusionNode::processFrame(int frame_id,

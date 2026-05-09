@@ -21,17 +21,18 @@ public: // 构造函数与析构函数
 public: // 方法
   void onConfigure();
 
-private: // 成员变量
+private: // 成员变量  
+  // Subscribers, Publishers and topic names
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pcl_sub_;
-  
-  // Publishers and topic names
   rclcpp::Publisher<yolo_msgs::msg::DetectionArray>::SharedPtr detections_pub_;
   std::string input_pc_topic_;
   std::string output_detections_topic_;
-  double confidence_point_scale_;
   
   // DBSCAN clustering
   DBSCAN dbscan_;
+  double eps_;
+  int min_pts_;
+  double confidence_point_scale_;
   
   // Point cloud callback
   void onPointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg);

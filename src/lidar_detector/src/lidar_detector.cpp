@@ -13,6 +13,20 @@ LidarDetectorNode::LidarDetectorNode(const rclcpp::NodeOptions & options)
 {
   std::cout << "\033[32m" << "Starting LidarDetectorNode" << "\033[0m" << std::endl;
   onConfigure(); // 配置参数
+
+  dbscan_.setEps(eps_);
+  dbscan_.setMinPts(min_pts_);
+
+  // Subscribe to point cloud topic from fast_lio
+  pcl_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
+    input_pc_topic_,
+    rclcpp::SensorDataQoS(),
+    [this](const sensor_msgs::msg::PointCloud2::SharedPtr msg) { this->onPointCloud(msg); }
+  );
+
+  detections_pub_ = this->create_publisher<yolo_msgs::msg::DetectionArray>(
+    output_detections_topic_,
+    rclcpp::SensorDataQoS());
 }
 
 LidarDetectorNode::~LidarDetectorNode()
@@ -25,37 +39,15 @@ void LidarDetectorNode::onConfigure()
   this->declare_parameter<double>("dbscan_eps", 0.5);
   this->declare_parameter<int>("dbscan_min_pts", 5);
   this->declare_parameter<double>("confidence_point_scale", 25.0);
-
-  double eps = this->get_parameter("dbscan_eps").as_double();
-  int min_pts = this->get_parameter("dbscan_min_pts").as_int();
+  eps_ = this->get_parameter("dbscan_eps").as_double();
+  min_pts_ = this->get_parameter("dbscan_min_pts").as_int();
   confidence_point_scale_ = this->get_parameter("confidence_point_scale").as_double();
-  
-  dbscan_.setEps(eps);
-  dbscan_.setMinPts(min_pts);
-  
-  RCLCPP_INFO(this->get_logger(), "DBSCAN configured: eps=%.2f, min_pts=%d, confidence_point_scale=%.2f",
-              eps, min_pts, confidence_point_scale_);
-  
+
   // Topic names
   this->declare_parameter<std::string>("input_pc_topic", "/cloud_registered");
   this->declare_parameter<std::string>("output_detections_topic", "/lidar_detections");
-
   input_pc_topic_ = this->get_parameter("input_pc_topic").as_string();
   output_detections_topic_ = this->get_parameter("output_detections_topic").as_string();
-
-  RCLCPP_INFO(this->get_logger(), "Topic config: input='%s', detections='%s'",
-              input_pc_topic_.c_str(), output_detections_topic_.c_str());
-
-  // Subscribe to point cloud topic from fast_lio
-  pcl_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
-    input_pc_topic_,
-    rclcpp::SensorDataQoS(),
-    [this](const sensor_msgs::msg::PointCloud2::SharedPtr msg) { this->onPointCloud(msg); }
-  );
-
-  detections_pub_ = this->create_publisher<yolo_msgs::msg::DetectionArray>(
-    output_detections_topic_,
-    rclcpp::SensorDataQoS());
 }
 
 void LidarDetectorNode::onPointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
@@ -142,25 +134,25 @@ void LidarDetectorNode::onPointCloud(const sensor_msgs::msg::PointCloud2::Shared
   }
   detections_pub_->publish(detection_array);
   
-  RCLCPP_DEBUG(this->get_logger(), "Point cloud received: %u points, %zu clusters detected",
-               msg->width * msg->height, clusters.size());
+  // RCLCPP_DEBUG(this->get_logger(), "Point cloud received: %u points, %zu clusters detected",
+  //              msg->width * msg->height, clusters.size());
   
   // Output detected object positions, confidence, and 3D bounding boxes.
   for (std::size_t i = 0; i < clusters.size(); ++i)
   {
     const auto &detection = detection_array.detections[i];
     const auto &bbox = detection.bbox3d;
-    RCLCPP_INFO(this->get_logger(),
-                "Object %zu: score=%.3f center=(%.3f, %.3f, %.3f) size=(%.3f, %.3f, %.3f) points=%zu",
-                i + 1,
-                detection.score,
-                bbox.center.position.x,
-                bbox.center.position.y,
-                bbox.center.position.z,
-                bbox.size.x,
-                bbox.size.y,
-                bbox.size.z,
-                clusters[i].point_count);
+    // RCLCPP_INFO(this->get_logger(),
+    //             "Object %zu: score=%.3f center=(%.3f, %.3f, %.3f) size=(%.3f, %.3f, %.3f) points=%zu",
+    //             i + 1,
+    //             detection.score,
+    //             bbox.center.position.x,
+    //             bbox.center.position.y,
+    //             bbox.center.position.z,
+    //             bbox.size.x,
+    //             bbox.size.y,
+    //             bbox.size.z,
+    //             clusters[i].point_count);
   }
 }
 
