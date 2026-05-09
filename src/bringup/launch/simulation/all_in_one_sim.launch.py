@@ -91,7 +91,8 @@ def generate_launch_description():
             "params_file": os.path.join(
                 get_package_share_directory("yolo_bringup"),
                 "config",
-                "yolo.yaml",
+                "cfg",
+                "bringup.yaml",
             ),
         }.items(),
     )
