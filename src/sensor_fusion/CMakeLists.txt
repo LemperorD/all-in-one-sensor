@@ -61,7 +61,10 @@ install(
 # Install libraries
 install(
   TARGETS bytetrack ab3dmot
-  DESTINATION lib
+  EXPORT export_${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
 )
 
 # Fusion node (component) and fusion utils
@@ -87,7 +90,17 @@ target_link_libraries(fusion_node
 
 target_compile_features(fusion_node PUBLIC cxx_std_17)
 
-install(TARGETS fusion_node DESTINATION lib)
+rclcpp_components_register_nodes(fusion_node "sensor_fusion::FusionNode")
+
+install(
+  TARGETS fusion_node
+  EXPORT export_${PROJECT_NAME}
+  ARCHIVE DESTINATION lib
+  LIBRARY DESTINATION lib
+  RUNTIME DESTINATION bin
+)
+
+ament_export_targets(export_${PROJECT_NAME} HAS_LIBRARY_TARGET)
 
 # Install launch files
 install(

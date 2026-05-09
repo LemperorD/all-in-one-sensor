@@ -88,7 +88,6 @@ def generate_launch_description():
         ),
         launch_arguments={
             "namespace": namespace,
-
             "params_file": os.path.join(
                 get_package_share_directory("yolo_bringup"),
                 "config",
@@ -106,12 +105,12 @@ def generate_launch_description():
     )
 
     load_composable_nodes = LoadComposableNodes(
-        target_container=["", namespace, "perception_container"],
+        target_container=["/", namespace, "/perception_container"],
         composable_node_descriptions=[
             # 3D Object Detection (LiDAR-based Component)
             ComposableNode(
                 package="lidar_detector",
-                plugin="lidar_detector::LidarDetectorComponent",
+                plugin="lidar_detector::LidarDetectorNode",
                 name="lidar_detector",
                 namespace=namespace,
                 parameters=[configured_params],
@@ -119,7 +118,7 @@ def generate_launch_description():
             # Multi-Sensor Fusion Component
             ComposableNode(
                 package="sensor_fusion",
-                plugin="sensor_fusion::FusionComponent",
+                plugin="sensor_fusion::FusionNode",
                 name="fusion_node",
                 namespace=namespace,
                 parameters=[configured_params],
@@ -127,7 +126,7 @@ def generate_launch_description():
             # IMMKF Trajectory Predictor Component
             ComposableNode(
                 package="immkf_predictor",
-                plugin="immkf_predictor::ImmkfPredictorComponent",
+                plugin="immkf_predictor::PredictorNode",
                 name="immkf_predictor",
                 namespace=namespace,
                 parameters=[configured_params],
@@ -135,7 +134,7 @@ def generate_launch_description():
             # MPC Gimbal Planner Component
             ComposableNode(
                 package="mpc_gimbal_planner",
-                plugin="mpc_gimbal_planner::MpcPlannerComponent",
+                plugin="mpc_gimbal_planner::PlannerNode",
                 name="mpc_gimbal_planner",
                 namespace=namespace,
                 parameters=[configured_params],
