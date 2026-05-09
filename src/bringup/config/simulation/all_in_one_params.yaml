@@ -60,30 +60,25 @@ yolo_detector:
     camera_info_topic: "camera/camera_info"
     detections_topic: "detections_2d"
 
-    # YOLO Model Configuration (keys expected by yolo.launch)
     model_type: "YOLO"
-    model: "yolov8s.pt"
+    model: "/home/ld/all-in-one-sensor/src/yolo_ros/yolo_bringup/config/weight/best.pt"
     fuse_model: false
     yolo_encoding: "bgr8"
     enable: true
     threshold: 0.45
     iou: 0.45
 
-    # Device / precision
     device: "cuda:0"
     half: false
 
-    # Inference size (separate height/width as in yolo.launch)
     imgsz_height: 480
     imgsz_width: 640
 
-    # Inference limits / flags
     max_det: 300
     augment: false
     agnostic_nms: false
     retina_masks: false
 
-    # Image QoS / reliability
     image_reliability: 1
 
 # ==================== 3D Object Detection (LiDAR-based) ====================

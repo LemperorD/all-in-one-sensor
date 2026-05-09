@@ -46,7 +46,7 @@ void PredictorNode::onConfigure()
 		"initial_covariance_diagonal", {1.0, 1.0, 1.0, 1.0, 1.0, 1.0});
 	prediction_dt_ = this->declare_parameter<double>("prediction_dt", 0.1);
 	prediction_horizon_ = static_cast<std::size_t>(
-		this->declare_parameter<int>("prediction_horizon", 10));
+		this->declare_parameter<double>("prediction_horizon", 10.0));
 
 	// Create TrackManager with IMM-KF configuration
 	ImmkfConfig config;

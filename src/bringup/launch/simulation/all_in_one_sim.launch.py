@@ -1,4 +1,5 @@
 import os
+import yaml
 
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
@@ -78,14 +79,37 @@ def generate_launch_description():
         parameters=[configured_params],
     )
 
-    start_yolo_detector_node = Node(
-        package="yolo_ros",
-        executable="yolo_node",
-        name="yolo_detector",
-        output="screen",
-        namespace=namespace,
-        parameters=[configured_params],
-    )
+    # start_yolo_detector_node = Node(
+    #     package="yolo_ros",
+    #     executable="yolo_node",
+    #     name="yolo_detector",
+    #     output="screen",
+    #     namespace=namespace,
+    #     parameters=[configured_params],
+    # )
+
+    with open(
+        os.path.join(bringup_dir, "config", "simulation", "all_in_one_params.yaml"),
+        "r"
+    ) as f:
+        config = yaml.safe_load(f)
+    yolo_cfg = config["yolo_detector"]["ros__parameters"]
+    yolo_launch = IncludeLaunchDescription(
+    PythonLaunchDescriptionSource(
+        os.path.join(
+            get_package_share_directory("yolo_bringup"),
+            "launch",
+            "yolo.launch.py"
+        )
+    ),
+    launch_arguments={
+        "namespace": namespace,
+        "input_image_topic": yolo_cfg["input_image_topic"],
+        "device": yolo_cfg["device"],
+        "model": yolo_cfg["model"],
+        "threshold": str(yolo_cfg["threshold"]),
+    }.items(),
+)
 
     container = Node(
         package="rclcpp_components",
@@ -156,7 +180,8 @@ def generate_launch_description():
     # Add Standalone Nodes (Non-component executables)
     ld.add_action(start_velodyne_convert_tool)
     ld.add_action(start_fast_lio_node)
-    ld.add_action(start_yolo_detector_node)
+    # ld.add_action(start_yolo_detector_node)
+    ld.add_action(yolo_launch)
 
     # Add Component Container and Load Components
     ld.add_action(container)
