@@ -139,13 +139,13 @@ def generate_launch_description():
 		parameters=[{"model_name": "iris", "world_name": "gimbal_sim_world", "center_x": 0.0, "center_y": 0.0, "radius": 2.5, "height": 5.0}],
 	)
 
-	robot_ign_clock_bridge = Node(
-		package="ros_gz_bridge",
-		executable="parameter_bridge",
-		arguments=[
-			"/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
-		],
-	)
+	# robot_ign_clock_bridge = Node(
+	# 	package="ros_gz_bridge",
+	# 	executable="parameter_bridge",
+	# 	arguments=[
+	# 		"/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock",
+	# 	],
+	# )
 
 	set_performer_service = ExecuteProcess(
 		cmd=[
@@ -187,7 +187,7 @@ def generate_launch_description():
 			}.items(),
 		)
 	)
-	ld.add_action(robot_ign_clock_bridge)
+	# ld.add_action(robot_ign_clock_bridge)
 	ld.add_action(spawn_robot)
 	ld.add_action(robot_base)
 	ld.add_action(robot_state_publisher)
