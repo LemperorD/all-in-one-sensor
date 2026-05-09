@@ -54,38 +54,44 @@ fast_lio:
 # ==================== 2D Object Detection (YOLO) ====================
 yolo_detector:
   ros__parameters:
-    # Input/Output Topics
-    image_topic: "/camera/image_raw"
-    camera_info_topic: "/camera/camera_info"
-    detections_topic: "/detections_2d"
-    
-    # YOLO Model Configuration
-    model_path: "yolov8s.pt"           # Model weights file path
-    conf_threshold: 0.45               # Confidence threshold for detections
-    iou_threshold: 0.45                # IOU threshold for NMS
-    
-    # Device Configuration
-    device: "cuda:0"                   # "cuda:0" for GPU, "cpu" for CPU
-    half: false                        # Use half precision (FP16) for faster inference
-    
-    # Input Configuration
-    image_size: 640                    # Input image size for YOLO
-    augment: false                     # Use augmentation during inference
-    
-    # Detection Classes to Track
-    # 0: person, 1: bicycle, 2: car, 3: motorcycle, 5: bus, 7: truck, etc.
-    classes: [0, 2, 3, 5, 7]          # Classes to detect (empty = all classes)
-    
-    # Visualization
-    viz_enable: true                   # Publish annotated images
-    viz_topic: "/detections_2d_viz"    # Visualization output topic
+    # Input/Output Topics (match yolo.launch expectations)
+    input_image_topic: "front_industrial_camera/image"
+    # camera_info_topic kept for compatibility with other nodes
+    camera_info_topic: "camera/camera_info"
+    detections_topic: "detections_2d"
+
+    # YOLO Model Configuration (keys expected by yolo.launch)
+    model_type: "YOLO"
+    model: "yolov8s.pt"
+    fuse_model: false
+    yolo_encoding: "bgr8"
+    enable: true
+    threshold: 0.45
+    iou: 0.45
+
+    # Device / precision
+    device: "cuda:0"
+    half: false
+
+    # Inference size (separate height/width as in yolo.launch)
+    imgsz_height: 480
+    imgsz_width: 640
+
+    # Inference limits / flags
+    max_det: 300
+    augment: false
+    agnostic_nms: false
+    retina_masks: false
+
+    # Image QoS / reliability
+    image_reliability: 1
 
 # ==================== 3D Object Detection (LiDAR-based) ====================
 lidar_detector:
   ros__parameters:
     # Sensor topic configuration
-    input_pc_topic: "/cloud_registered"
-    output_detections_topic: "/detections_3d"
+    input_pc_topic: "cloud_registered"
+    output_detections_topic: "detections_3d"
     
     # DBSCAN Clustering Parameters
     dbscan_eps: 0.5                    # Neighborhood radius (meters)
@@ -111,12 +117,12 @@ fusion_node:
   ros__parameters:
     # Topic Configuration
     topics:
-      detections_2d: "/detections_2d"  # Input: 2D detections from YOLO
-      detections_3d: "/detections_3d"  # Input: 3D detections from LiDAR
-      image_raw: "/camera/image_raw"   # Input: Raw camera image
-      tracks_2d: "/tracks_2d"          # Output: 2D tracks from ByteTrack
-      tracks_3d: "/tracks_3d"          # Output: 3D tracks from AB3DMOT
-      fused_detections: "/fused_detections"  # Output: Fused detections
+      detections_2d: "detections_2d"  # Input: 2D detections from YOLO
+      detections_3d: "detections_3d"  # Input: 3D detections from LiDAR
+      image_raw: "camera/image_raw"   # Input: Raw camera image
+      tracks_2d: "tracks_2d"          # Output: 2D tracks from ByteTrack
+      tracks_3d: "tracks_3d"          # Output: 3D tracks from AB3DMOT
+      fused_detections: "fused_detections"  # Output: Fused detections
 
     # Camera Intrinsics (3x3 K matrix, row-major order)
     # K = [fx, 0, cx, 0, fy, cy, 0, 0, 1]
@@ -159,11 +165,11 @@ fusion_node:
     publish_tracking_results: true        # Publish tracking results
 
 # ==================== IMMKF Trajectory Predictor ====================
-immkf_predictor:
+predictor_node:
   ros__parameters:
     # Input/Output Topics
-    tracks_3d_topic: "/tracks_3d"
-    predictions_topic: "/trajectory_predictions"
+    tracks_3d_topic: "tracks_3d"
+    predictions_topic: "trajectory_predictions"
     
     # IMMKF Model Configuration
     # Interaction Multiple Model (IMM) with Kalman Filtering
@@ -203,14 +209,14 @@ immkf_predictor:
     prediction_viz_enable: true         # Enable visualization of predictions
 
 # ==================== MPC Gimbal Planner ====================
-mpc_gimbal_planner:
+planner_node:
   ros__parameters:
     # Input Topics
-    tracks_topic: "/tracks_3d"
-    predictions_topic: "/trajectory_predictions"
+    tracks_topic: "tracks_3d"
+    predictions_topic: "trajectory_predictions"
     
     # Output Topic
-    control_cmd_topic: "/gimbal_control_cmd"
+    control_cmd_topic: "gimbal_control_cmd"
     
     # MPC Configuration
     # Model Predictive Control Parameters

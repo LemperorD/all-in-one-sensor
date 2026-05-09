@@ -78,23 +78,13 @@ def generate_launch_description():
         parameters=[configured_params],
     )
 
-    yolo_launch = IncludeLaunchDescription(
-        PythonLaunchDescriptionSource(
-            os.path.join(
-                get_package_share_directory("yolo_bringup"),
-                "launch",
-                "yolo_uav_detect.launch.py",
-            )
-        ),
-        launch_arguments={
-            "namespace": namespace,
-            "params_file": os.path.join(
-                get_package_share_directory("yolo_bringup"),
-                "config",
-                "cfg",
-                "bringup.yaml",
-            ),
-        }.items(),
+    start_yolo_detector_node = Node(
+        package="yolo_ros",
+        executable="yolo_node",
+        name="yolo_detector",
+        output="screen",
+        namespace=namespace,
+        parameters=[configured_params],
     )
 
     container = Node(
@@ -128,7 +118,7 @@ def generate_launch_description():
             ComposableNode(
                 package="immkf_predictor",
                 plugin="immkf_predictor::PredictorNode",
-                name="immkf_predictor",
+                name="predictor_node",
                 namespace=namespace,
                 parameters=[configured_params],
             ),
@@ -136,7 +126,7 @@ def generate_launch_description():
             ComposableNode(
                 package="mpc_gimbal_planner",
                 plugin="mpc_gimbal_planner::PlannerNode",
-                name="mpc_gimbal_planner",
+                name="planner_node",
                 namespace=namespace,
                 parameters=[configured_params],
             ),
@@ -166,7 +156,7 @@ def generate_launch_description():
     # Add Standalone Nodes (Non-component executables)
     ld.add_action(start_velodyne_convert_tool)
     ld.add_action(start_fast_lio_node)
-    ld.add_action(yolo_launch)
+    ld.add_action(start_yolo_detector_node)
 
     # Add Component Container and Load Components
     ld.add_action(container)
