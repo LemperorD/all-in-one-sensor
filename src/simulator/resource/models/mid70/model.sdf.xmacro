@@ -38,15 +38,22 @@
         <ray>
           <scan>
             <horizontal>
-              <samples>${samples}</samples>
+              <!-- <samples>${samples}</samples>
               <resolution>1.0</resolution>
               <min_angle>-0.614355896702</min_angle>
-              <max_angle>0.614355896702</max_angle>
+              <max_angle>0.614355896702</max_angle> -->
+              <samples>${samples}</samples>
+              <resolution>1.0</resolution>
+              <min_angle>-1.2</min_angle>
+              <max_angle>1.2</max_angle>
             </horizontal>
             <vertical>
-              <samples>128</samples>
+              <!-- <samples>128</samples>
               <min_angle>-0.614355896702</min_angle>
-              <max_angle>0.614355896702</max_angle>
+              <max_angle>0.614355896702</max_angle> -->
+              <samples>512</samples>
+              <min_angle>-1.2</min_angle>
+              <max_angle>1.2</max_angle>
             </vertical>
           </scan>
           <range>
