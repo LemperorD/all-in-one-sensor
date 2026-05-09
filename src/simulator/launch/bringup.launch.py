@@ -75,9 +75,9 @@ def generate_launch_description():
 			"-allow_renaming",
 			"true",
 			"-x",
-			"6.0",
+			"4.5",
 			"-y",
-			"6.0",
+			"4.5",
 			"-z",
 			"4.4",
 			"-Y",
@@ -124,9 +124,9 @@ def generate_launch_description():
 			"-allow_renaming",
 			"true",
 			"-x",
-			"6.0",
+			"0.0",
 			"-y",
-			"6.0",
+			"0.0",
 			"-z",
 			"5.0",
 		],
@@ -136,7 +136,7 @@ def generate_launch_description():
 		package="simulator",
 		executable="trajectory_node",
 		output="screen",
-		parameters=[{"model_name": "iris", "world_name": "gimbal_sim_world", "center_x": 6.0, "center_y": 6.0, "radius": 2.0, "height": 5.0}],
+		parameters=[{"model_name": "iris", "world_name": "gimbal_sim_world", "center_x": 0.0, "center_y": 0.0, "radius": 2.5, "height": 5.0}],
 	)
 
 	robot_ign_clock_bridge = Node(
