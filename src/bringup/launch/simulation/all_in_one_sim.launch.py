@@ -70,24 +70,6 @@ def generate_launch_description():
         parameters=[configured_params],
     )
 
-    start_fast_lio_node = Node(
-        package="fast_lio",
-        executable="fastlio_mapping",
-        name="fast_lio",
-        output="screen",
-        namespace=namespace,
-        parameters=[configured_params],
-    )
-
-    # start_yolo_detector_node = Node(
-    #     package="yolo_ros",
-    #     executable="yolo_node",
-    #     name="yolo_detector",
-    #     output="screen",
-    #     namespace=namespace,
-    #     parameters=[configured_params],
-    # )
-
     with open(
         os.path.join(bringup_dir, "config", "simulation", "all_in_one_params.yaml"),
         "r"
@@ -179,8 +161,6 @@ def generate_launch_description():
 
     # Add Standalone Nodes (Non-component executables)
     ld.add_action(start_velodyne_convert_tool)
-    ld.add_action(start_fast_lio_node)
-    # ld.add_action(start_yolo_detector_node)
     ld.add_action(yolo_launch)
 
     # Add Component Container and Load Components

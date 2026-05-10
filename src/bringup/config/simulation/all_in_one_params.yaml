@@ -40,7 +40,7 @@ yolo_detector:
 lidar_detector:
   ros__parameters:
     # Sensor topic configuration
-    input_pc_topic: "cloud_registered"
+    input_pc_topic: "velodyne_points"  # Input point cloud topic
     output_detections_topic: "detections_3d"
     
     # DBSCAN Clustering Parameters
@@ -162,7 +162,7 @@ predictor_node:
 planner_node:
   ros__parameters:
     # Topics
-    input_path_topic: "/immkf/tracks/all_tracks"
+    input_path_topic: "trajectory_predictions"
     input_state_topic: "robot_base/gimbal_state"
     output_cmd_topic: "robot_base/gimbal_cmd"
 

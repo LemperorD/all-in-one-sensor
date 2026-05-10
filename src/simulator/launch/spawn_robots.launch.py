@@ -17,7 +17,11 @@ def generate_launch_description():
     # https://github.com/ros/robot_state_publisher/pull/30
     # TODO(orduno) Substitute with `PushNodeRemapping`
     #              https://github.com/ros2/launch_ros/issues/56
-    remappings = [("/tf", "tf"), ("/tf_static", "tf_static")]
+    remappings = [
+        ("/tf", "tf"),
+        ("/tf_static", "tf_static"),
+        ("/joint_states", "/all_in_one_sensor/joint_states"),
+    ]
 
     pkg_simulator = get_package_share_directory("simulator")
 

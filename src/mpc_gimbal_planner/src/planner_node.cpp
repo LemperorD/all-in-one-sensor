@@ -178,12 +178,6 @@ void PlannerNode::publishPatrolCommand(const rclcpp::Time & now)
 	current_rates_.x() = patrol_yaw_rate_;
 	current_rates_.y() = pitch_rate;
 	last_patrol_update_time_ = now;
-
-	std::cout << "Patrol command - Yaw: " << command.position.yaw
-			  << ", Pitch: " << command.position.pitch
-			  << ", Yaw Rate: " << command.velocity.yaw
-			  << ", Pitch Rate: " << command.velocity.pitch
-			  << std::endl;
 }
 
 void PlannerNode::publishCommand()

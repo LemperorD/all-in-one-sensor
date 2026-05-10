@@ -95,7 +95,11 @@ def generate_launch_description():
 	robot_state_publisher = Node(
 		package="robot_state_publisher",
 		executable="robot_state_publisher",
-		remappings=[("/tf", "tf"), ("/tf_static", "tf_static")],
+		remappings=[
+			("/tf", "tf"),
+			("/tf_static", "tf_static"),
+			("/joint_states", "/all_in_one_sensor/joint_states"),
+		],
 		parameters=[
 			{
 				"use_sim_time": True,
