@@ -11,6 +11,8 @@ find_package(Eigen3 REQUIRED)
 find_package(OpenCV REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_components REQUIRED)
+find_package(std_msgs REQUIRED)
+find_package(yolo_msgs REQUIRED)
 
 # uncomment the following section in order to fill in
 # further dependencies manually.
@@ -79,7 +81,7 @@ target_include_directories(fusion_node
     $<INSTALL_INTERFACE:include>
 )
 
-ament_target_dependencies(fusion_node rclcpp rclcpp_components)
+ament_target_dependencies(fusion_node rclcpp rclcpp_components std_msgs yolo_msgs)
 
 target_link_libraries(fusion_node
   bytetrack

@@ -29,9 +29,16 @@ public: // 方法
   void onConfigure();
 
 private:
+  enum class ControlMode
+  {
+    Patrol,
+    Track,
+  };
+
   void onPath(const nav_msgs::msg::Path::SharedPtr msg);
   void onGimbalState(const simulator::msg::Gimbal::SharedPtr msg);
   void publishCommand();
+  void publishPatrolCommand(const rclcpp::Time & now);
   std::vector<Eigen::Vector2d> buildReferenceSequence() const;
   geometry_msgs::msg::PoseStamped transformPoseToBase(
     const geometry_msgs::msg::PoseStamped & pose) const;
@@ -41,6 +48,8 @@ private: // 成员变量
   bool has_path_{false};
   bool has_state_{false};
 
+  ControlMode control_mode_{ControlMode::Patrol};
+
   std::string input_path_topic_;
   std::string input_state_topic_;
   std::string output_cmd_topic_;
@@ -49,10 +58,23 @@ private: // 成员变量
   std::size_t prediction_horizon_{10};
   double prediction_dt_{0.1};
   double control_rate_hz_{20.0};
+  double target_timeout_sec_{0.5};
+  double yaw_min_{-1.57};
+  double yaw_max_{1.57};
+  double pitch_min_{-0.8};
+  double pitch_max_{0.8};
+  double patrol_yaw_rate_{0.3};
+  double patrol_pitch_rate_amplitude_{0.25};
+  double patrol_pitch_frequency_{0.15};
+  double patrol_yaw_margin_{0.05};
+
+  int patrol_yaw_direction_{1};
 
   nav_msgs::msg::Path latest_path_;
   Eigen::Vector2d current_angles_{Eigen::Vector2d::Zero()};
   Eigen::Vector2d current_rates_{Eigen::Vector2d::Zero()};
+  rclcpp::Time last_path_update_time_;
+  rclcpp::Time patrol_start_time_;
 
   rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr path_sub_;
   rclcpp::Subscription<simulator::msg::Gimbal>::SharedPtr state_sub_;
