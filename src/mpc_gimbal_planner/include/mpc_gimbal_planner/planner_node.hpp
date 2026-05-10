@@ -44,7 +44,6 @@ private:
     const geometry_msgs::msg::PoseStamped & pose) const;
 
 private: // 成员变量
-  bool configured_{false};
   bool has_path_{false};
   bool has_state_{false};
 
@@ -61,7 +60,7 @@ private: // 成员变量
   double target_timeout_sec_{0.5};
   double yaw_min_{-1.57};
   double yaw_max_{1.57};
-  double pitch_min_{-0.8};
+  double pitch_min_{-0.5};
   double pitch_max_{0.8};
   double patrol_yaw_rate_{0.3};
   double patrol_pitch_rate_amplitude_{0.25};
@@ -75,6 +74,8 @@ private: // 成员变量
   Eigen::Vector2d current_rates_{Eigen::Vector2d::Zero()};
   rclcpp::Time last_path_update_time_;
   rclcpp::Time patrol_start_time_;
+  rclcpp::Time last_patrol_update_time_;
+  Eigen::Vector2d patrol_target_angles_{Eigen::Vector2d::Zero()};
 
   rclcpp::Subscription<nav_msgs::msg::Path>::SharedPtr path_sub_;
   rclcpp::Subscription<simulator::msg::Gimbal>::SharedPtr state_sub_;
@@ -85,6 +86,7 @@ private: // 成员变量
   std::unique_ptr<tf2_ros::TransformListener> tf_listener_;
 
   std::unique_ptr<MPCGimbal> mpc_;
+  MPCGimbal::Config config_;
 
 };
 

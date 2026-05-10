@@ -6,18 +6,29 @@
         <link name="chassis" >
             <inertial>
                 <pose>0 0 0.055 0 0 0</pose>
-                <xmacro_block name="inertia_box"  m="15.0" x="0.36" y="0.24" z="0.13"/>
+                <xmacro_block name="inertia_cylinder"  m="15.0" r="0.18" l="0.13"/>
             </inertial>
             <visual name="chassis_visual">
-                <xmacro_block name="geometry_mesh" uri="model://gimbal_base/meshes/chassis_base.dae"/>
+                <pose>0 0 0.045 0 0 0</pose>
+                <geometry>
+                    <cylinder>
+                        <radius>0.18</radius>
+                        <length>0.13</length>
+                    </cylinder>
+                </geometry>
             </visual>
             <collision name="chassis_base_collision">
                 <pose>0 0 0.045 0 0 0</pose>
-                <xmacro_block name="geometry_box" x="0.36" y="0.24" z="0.13"/>
+                <geometry>
+                    <cylinder>
+                        <radius>0.18</radius>
+                        <length>0.13</length>
+                    </cylinder>
+                </geometry>
             </collision>
         </link>
         <joint name="gimbal_yaw_joint" type="revolute">
-            <pose relative_to='chassis'>0 0 0.1376 0 0 0</pose>
+            <pose relative_to='chassis'>0 0 0.085 0 0 0</pose>
             <parent>chassis</parent>
             <child>gimbal_yaw</child>
             <axis>

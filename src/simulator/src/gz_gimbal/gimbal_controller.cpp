@@ -101,8 +101,8 @@ void GimbalController::gimbal_cb(const simulator::msg::GimbalCmd::SharedPtr msg)
     RCLCPP_WARN(node_->get_logger(), "pitch cmd type[%d] isn't supported!", msg->pitch_type);
   }
   // limitation for pitch
-  target_pitch_ = std::min(target_pitch_, 1.0);
-  target_pitch_ = std::max(target_pitch_, -1.0);
+  target_pitch_ = std::min(target_pitch_, 3.14*0.18);
+  target_pitch_ = std::max(target_pitch_, -3.14*0.25);
   // for yaw
   if (msg->yaw_type == msg->ABSOLUTE_ANGLE) {
     target_yaw_ = msg->position.yaw;

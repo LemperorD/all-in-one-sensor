@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <cmath>
+#include <algorithm>
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
@@ -17,7 +18,23 @@ PlannerNode::PlannerNode(const rclcpp::NodeOptions & options)
 : Node("planner_node", options)
 {
 	onConfigure();
-
+	// Initialize MPC controller
+	mpc_ = std::make_unique<MPCGimbal>(config_);
+	patrol_start_time_ = this->now();
+	const auto timer_period = std::chrono::duration<double>(1.0 / control_rate_hz_);
+	control_timer_ = this->create_wall_timer(
+		timer_period, std::bind(&PlannerNode::publishCommand, this));
+	// TF
+	tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
+	tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
+	// Subscribers and publishers
+	path_sub_ = this->create_subscription<nav_msgs::msg::Path>(
+		input_path_topic_, rclcpp::QoS(10),
+		std::bind(&PlannerNode::onPath, this, std::placeholders::_1));
+	state_sub_ = this->create_subscription<simulator::msg::Gimbal>(
+		input_state_topic_, rclcpp::QoS(10),
+		std::bind(&PlannerNode::onGimbalState, this, std::placeholders::_1));
+	command_pub_ = this->create_publisher<simulator::msg::GimbalCmd>(output_cmd_topic_, rclcpp::QoS(10));
 }
 
 PlannerNode::~PlannerNode()
@@ -26,11 +43,6 @@ PlannerNode::~PlannerNode()
 
 void PlannerNode::onConfigure()
 {
-	if (configured_) {
-		return;
-	}
-	configured_ = true;
-
 	input_path_topic_ = this->declare_parameter<std::string>("input_path_topic", "/immkf/tracks/all_tracks");
 	input_state_topic_ = this->declare_parameter<std::string>("input_state_topic", "robot_base/gimbal_state");
 	output_cmd_topic_ = this->declare_parameter<std::string>("output_cmd_topic", "robot_base/gimbal_cmd");
@@ -43,49 +55,21 @@ void PlannerNode::onConfigure()
 	yaw_max_ = this->declare_parameter<double>("yaw_max", 1.57);
 	pitch_min_ = this->declare_parameter<double>("pitch_min", -0.8);
 	pitch_max_ = this->declare_parameter<double>("pitch_max", 0.8);
-	patrol_yaw_rate_ = this->declare_parameter<double>("patrol_yaw_rate", 0.3);
-	patrol_pitch_rate_amplitude_ = this->declare_parameter<double>("patrol_pitch_rate_amplitude", 0.25);
+	patrol_yaw_rate_ = this->declare_parameter<double>("patrol_yaw_rate", 0.01);
+	patrol_pitch_rate_amplitude_ = this->declare_parameter<double>("patrol_pitch_rate_amplitude", 0.015);
 	patrol_pitch_frequency_ = this->declare_parameter<double>("patrol_pitch_frequency", 0.15);
 	patrol_yaw_margin_ = this->declare_parameter<double>("patrol_yaw_margin", 0.05);
 
-	MPCGimbal::Config config;
-	config.horizon_steps = prediction_horizon_;
-	config.prediction_dt = prediction_dt_;
-	config.track_weight = this->declare_parameter<double>("track_weight", 1.0);
-	config.smooth_weight = this->declare_parameter<double>("smooth_weight", 0.2);
-	config.control_weight = this->declare_parameter<double>("control_weight", 0.05);
-	config.yaw_min = yaw_min_;
-	config.yaw_max = yaw_max_;
-	config.pitch_min = pitch_min_;
-	config.pitch_max = pitch_max_;
-	config.max_rate = this->declare_parameter<double>("max_rate", 1.0);
-
-	tf_buffer_ = std::make_unique<tf2_ros::Buffer>(this->get_clock());
-	tf_listener_ = std::make_unique<tf2_ros::TransformListener>(*tf_buffer_);
-
-	path_sub_ = this->create_subscription<nav_msgs::msg::Path>(
-		input_path_topic_, rclcpp::QoS(10),
-		std::bind(&PlannerNode::onPath, this, std::placeholders::_1));
-
-	state_sub_ = this->create_subscription<simulator::msg::Gimbal>(
-		input_state_topic_, rclcpp::QoS(10),
-		std::bind(&PlannerNode::onGimbalState, this, std::placeholders::_1));
-
-	command_pub_ = this->create_publisher<simulator::msg::GimbalCmd>(output_cmd_topic_, rclcpp::QoS(10));
-
-	const auto timer_period = std::chrono::duration<double>(1.0 / control_rate_hz_);
-	control_timer_ = this->create_wall_timer(
-		timer_period, std::bind(&PlannerNode::publishCommand, this));
-
-	mpc_ = std::make_unique<MPCGimbal>(config);
-	patrol_start_time_ = this->now();
-
-	RCLCPP_INFO(
-		this->get_logger(),
-		"Configured MPC gimbal planner: path=%s state=%s cmd=%s horizon=%zu dt=%.3f rate=%.1f",
-		input_path_topic_.c_str(), input_state_topic_.c_str(), output_cmd_topic_.c_str(),
-		prediction_horizon_, prediction_dt_, control_rate_hz_);
-
+	config_.horizon_steps = prediction_horizon_;
+	config_.prediction_dt = prediction_dt_;
+	config_.track_weight = this->declare_parameter<double>("track_weight", 1.0);
+	config_.smooth_weight = this->declare_parameter<double>("smooth_weight", 0.2);
+	config_.control_weight = this->declare_parameter<double>("control_weight", 0.05);
+	config_.yaw_min = yaw_min_;
+	config_.yaw_max = yaw_max_;
+	config_.pitch_min = pitch_min_;
+	config_.pitch_max = pitch_max_;
+	config_.max_rate = this->declare_parameter<double>("max_rate", 1.0);
 }
 
 void PlannerNode::onPath(const nav_msgs::msg::Path::SharedPtr msg)
@@ -164,34 +148,47 @@ void PlannerNode::publishPatrolCommand(const rclcpp::Time & now)
 	}
 
 	const double yaw_rate = patrol_yaw_rate_ * static_cast<double>(patrol_yaw_direction_);
+
+	// compute dt since last patrol update to integrate target angles
+	double dt = 1.0 / control_rate_hz_;
+	if (last_patrol_update_time_.nanoseconds() != 0) {
+		dt = (now - last_patrol_update_time_).seconds();
+		if (dt <= 0.0) {
+			dt = 1.0 / control_rate_hz_;
+		}
+	}
+
 	const double elapsed_sec = (now - patrol_start_time_).seconds();
 	const double pitch_phase = kTwoPi * patrol_pitch_frequency_ * elapsed_sec - kHalfPi;
 	const double pitch_rate = patrol_pitch_rate_amplitude_ * std::sin(pitch_phase);
 
+	// integrate to form absolute target angles (robot doesn't accept VELOCITY cmd)
+	patrol_target_angles_.x() += yaw_rate * dt;
+	patrol_target_angles_.y() += pitch_rate * dt;
+	// clamp
+	patrol_target_angles_.x() = std::min(std::max(patrol_target_angles_.x(), yaw_min_), yaw_max_);
+	patrol_target_angles_.y() = std::min(std::max(patrol_target_angles_.y(), pitch_min_), pitch_max_);
+
 	simulator::msg::GimbalCmd command;
 	command.tid = 0;
-	command.yaw_type = simulator::msg::GimbalCmd::VELOCITY;
-	command.pitch_type = simulator::msg::GimbalCmd::VELOCITY;
-	command.position.yaw = static_cast<float>(current_angles_.x());
-	command.position.pitch = static_cast<float>(current_angles_.y());
+	// send as absolute angles so underlying controller can accept it
+	command.yaw_type = simulator::msg::GimbalCmd::ABSOLUTE_ANGLE;
+	command.pitch_type = simulator::msg::GimbalCmd::ABSOLUTE_ANGLE;
+	command.position.yaw = static_cast<float>(patrol_target_angles_.x());
+	command.position.pitch = static_cast<float>(patrol_target_angles_.y());
+	// fill velocity fields for informational/debug use (may be ignored)
 	command.velocity.yaw = static_cast<float>(yaw_rate);
 	command.velocity.pitch = static_cast<float>(pitch_rate);
 
 	command_pub_->publish(command);
 	current_rates_.x() = yaw_rate;
 	current_rates_.y() = pitch_rate;
-
-	RCLCPP_DEBUG(
-		this->get_logger(),
-		"Published patrol command yaw_rate=%.3f pitch_rate=%.3f",
-		yaw_rate, pitch_rate);
+	last_patrol_update_time_ = now;
 }
 
 void PlannerNode::publishCommand()
 {
-	if (!has_state_ || !mpc_) {
-		return;
-	}
+	if (!has_state_ || !mpc_) return;
 
 	const auto now = this->now();
 	const bool target_available = has_path_ && !latest_path_.poses.empty() &&
@@ -201,10 +198,12 @@ void PlannerNode::publishCommand()
 		if (control_mode_ != ControlMode::Patrol) {
 			control_mode_ = ControlMode::Patrol;
 			patrol_start_time_ = now;
+			// initialize patrol targets from current measured angles
+			patrol_target_angles_ = current_angles_;
+			last_patrol_update_time_ = now;
 			patrol_yaw_direction_ = current_angles_.x() >= 0.5 * (yaw_min_ + yaw_max_) ? -1 : 1;
 			RCLCPP_INFO(this->get_logger(), "Target lost, switching to patrol mode");
 		}
-
 		publishPatrolCommand(now);
 		return;
 	}
@@ -218,7 +217,6 @@ void PlannerNode::publishCommand()
 	if (references.empty()) {
 		return;
 	}
-
 	const auto solution = mpc_->solve(current_angles_, current_rates_, references);
 
 	simulator::msg::GimbalCmd command;
@@ -232,11 +230,6 @@ void PlannerNode::publishCommand()
 
 	command_pub_->publish(command);
 	current_rates_ = solution.rate;
-
-	RCLCPP_DEBUG(
-		this->get_logger(),
-		"Published gimbal command yaw=%.3f pitch=%.3f",
-		solution.command.x(), solution.command.y());
 }
 
 } // namespace mpc_gimbal_planner
