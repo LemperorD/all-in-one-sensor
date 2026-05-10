@@ -206,68 +206,32 @@ predictor_node:
 # ==================== MPC Gimbal Planner ====================
 planner_node:
   ros__parameters:
-    # Input Topics
-    tracks_topic: "tracks_3d"
-    predictions_topic: "trajectory_predictions"
-    
-    # Output Topic
-    control_cmd_topic: "gimbal_control_cmd"
-    
-    # MPC Configuration
-    # Model Predictive Control Parameters
-    mpc_horizon: 10                     # Prediction horizon (steps)
-    mpc_dt: 0.1                         # Control step time (seconds)
-    mpc_iterations: 10                  # Iterations for optimization solver
-    
-    # Cost Function Weights
-    # J = w_pos*||pos_error||² + w_vel*||vel_error||² + w_control*||u||²
-    weight_position: 1.0                # Position tracking weight
-    weight_velocity: 0.5                # Velocity tracking weight
-    weight_control: 0.1                 # Control effort weight
-    weight_terminal: 2.0                # Terminal cost weight
-    
-    # Gimbal Control Constraints
-    # Gimbal movement limits
-    max_pan_speed: 2.0                  # Max pan speed (rad/s)
-    max_tilt_speed: 2.0                 # Max tilt speed (rad/s)
-    max_pan_acceleration: 5.0           # Max pan acceleration (rad/s²)
-    max_tilt_acceleration: 5.0          # Max tilt acceleration (rad/s²)
-    
-    # Pan/Tilt angle limits
-    pan_range: [-3.14159, 3.14159]      # Pan angle range (radians)
-    tilt_range: [-1.57080, 1.57080]     # Tilt angle range (radians, -90 to +90)
-    
-    # Target Following Parameters
-    # Gimbal control strategy
-    target_priority: "closest"          # Priority: "closest", "fastest", "highest_confidence"
-    confidence_threshold: 0.3           # Minimum confidence to track
-    
-    # Gimbal Smoothing
-    velocity_smoothing_window: 5        # Moving average window for smooth tracking
-    
-    # Dead Zone (in degrees) - gimbal stops tracking if target is within this zone
-    pan_deadzone: 2.0                   # Pan dead zone (degrees)
-    tilt_deadzone: 2.0                  # Tilt dead zone (degrees)
-    
-    # Feed-Forward Configuration
-    feedforward_enabled: true           # Enable velocity feed-forward
-    feedforward_gain: 0.5               # Feed-forward gain
-    
-    # PID Backup Controllers (if MPC fails)
-    # Pan/Tilt PID parameters
-    pid_pan_kp: 2.0
-    pid_pan_ki: 0.1
-    pid_pan_kd: 0.5
-    
-    pid_tilt_kp: 2.0
-    pid_tilt_ki: 0.1
-    pid_tilt_kd: 0.5
-    
-    # Tracking Mode Configuration
-    tracking_mode: "predictive"         # "reactive", "predictive", "hybrid"
-    predict_ahead_time: 0.5             # Prediction time for trajectory (seconds)
-    
-    # Output Configuration
-    publish_gimbal_state: true          # Publish gimbal state feedback
-    publish_tracking_error: true        # Publish tracking error metrics
-    visualization_enable: true          # Enable visualization markers
+    # Topics
+    input_path_topic: "/immkf/tracks/all_tracks"
+    input_state_topic: "robot_base/gimbal_state"
+    output_cmd_topic: "robot_base/gimbal_cmd"
+
+    # Frames and timing
+    base_frame: "base_footprint"
+    prediction_horizon: 15
+    prediction_dt: 0.1
+    control_rate_hz: 30.0
+    target_timeout_sec: 0.5
+
+    # MPC weights
+    track_weight: 2.0
+    smooth_weight: 0.5
+    control_weight: 0.1
+
+    # Angle limits and max angular rate
+    yaw_min: -1.57
+    yaw_max: 1.57
+    pitch_min: -0.6
+    pitch_max: 0.6
+    max_rate: 4.0
+
+    # Patrol mode parameters
+    patrol_yaw_rate: 0.5
+    patrol_pitch_rate_amplitude: 0.25
+    patrol_pitch_frequency: 0.15
+    patrol_yaw_margin: 0.05

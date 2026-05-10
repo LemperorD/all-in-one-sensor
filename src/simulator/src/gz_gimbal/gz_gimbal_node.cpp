@@ -38,7 +38,7 @@ GzGimbalNode::GzGimbalNode(const rclcpp::NodeOptions & options)
     node_, gz_node_, gz_gimbal_imu_topic);
   // create controller and publisher
   gimbal_controller_ = std::make_shared<gz_gimbal::GimbalController>(
-    node_, gimbal_vel_actuator_, gz_gimbal_imu_->get_position_sensor());
+    node_, gimbal_vel_actuator_, gz_gimbal_encoder_->get_position_sensor());
   //
   gimbal_vel_actuator_->enable(true);
   gz_gimbal_encoder_->enable(true);

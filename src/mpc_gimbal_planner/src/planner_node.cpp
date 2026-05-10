@@ -141,14 +141,6 @@ std::vector<Eigen::Vector2d> PlannerNode::buildReferenceSequence() const
 
 void PlannerNode::publishPatrolCommand(const rclcpp::Time & now)
 {
-	if (current_angles_.x() >= yaw_max_ - patrol_yaw_margin_) {
-		patrol_yaw_direction_ = -1;
-	} else if (current_angles_.x() <= yaw_min_ + patrol_yaw_margin_) {
-		patrol_yaw_direction_ = 1;
-	}
-
-	const double yaw_rate = patrol_yaw_rate_ * static_cast<double>(patrol_yaw_direction_);
-
 	// compute dt since last patrol update to integrate target angles
 	double dt = 1.0 / control_rate_hz_;
 	if (last_patrol_update_time_.nanoseconds() != 0) {
@@ -163,11 +155,13 @@ void PlannerNode::publishPatrolCommand(const rclcpp::Time & now)
 	const double pitch_rate = patrol_pitch_rate_amplitude_ * std::sin(pitch_phase);
 
 	// integrate to form absolute target angles (robot doesn't accept VELOCITY cmd)
-	patrol_target_angles_.x() += yaw_rate * dt;
+	patrol_target_angles_.x() += patrol_yaw_rate_ * dt;
 	patrol_target_angles_.y() += pitch_rate * dt;
-	// clamp
-	patrol_target_angles_.x() = std::min(std::max(patrol_target_angles_.x(), yaw_min_), yaw_max_);
-	patrol_target_angles_.y() = std::min(std::max(patrol_target_angles_.y(), pitch_min_), pitch_max_);
+	// if (patrol_target_angles_.x() > yaw_max_) {
+	// 	patrol_target_angles_.x() -= kTwoPi;  // wrap around to stay within limits
+	// } else if (patrol_target_angles_.x() < yaw_min_) {
+	// 	patrol_target_angles_.x() += kTwoPi;  // wrap around to stay within limits
+	// }
 
 	simulator::msg::GimbalCmd command;
 	command.tid = 0;
@@ -177,13 +171,19 @@ void PlannerNode::publishPatrolCommand(const rclcpp::Time & now)
 	command.position.yaw = static_cast<float>(patrol_target_angles_.x());
 	command.position.pitch = static_cast<float>(patrol_target_angles_.y());
 	// fill velocity fields for informational/debug use (may be ignored)
-	command.velocity.yaw = static_cast<float>(yaw_rate);
+	command.velocity.yaw = static_cast<float>(patrol_yaw_rate_);
 	command.velocity.pitch = static_cast<float>(pitch_rate);
 
 	command_pub_->publish(command);
-	current_rates_.x() = yaw_rate;
+	current_rates_.x() = patrol_yaw_rate_;
 	current_rates_.y() = pitch_rate;
 	last_patrol_update_time_ = now;
+
+	std::cout << "Patrol command - Yaw: " << command.position.yaw
+			  << ", Pitch: " << command.position.pitch
+			  << ", Yaw Rate: " << command.velocity.yaw
+			  << ", Pitch Rate: " << command.velocity.pitch
+			  << std::endl;
 }
 
 void PlannerNode::publishCommand()
