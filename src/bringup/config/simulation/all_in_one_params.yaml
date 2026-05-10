@@ -13,8 +13,6 @@ yolo_detector:
     input_image_topic: "front_industrial_camera/image"
     # camera_info_topic kept for compatibility with other nodes
     camera_info_topic: "camera/camera_info"
-    detections_topic: "detections_2d"
-
     model_type: "YOLO"
     model: "/home/ld/all-in-one-sensor/src/yolo_ros/yolo_bringup/config/weight/best.pt"
     fuse_model: false
@@ -67,7 +65,7 @@ fusion_node:
   ros__parameters:
     # Topic Configuration
     topics:
-      detections_2d: "detections_2d"  # Input: 2D detections from YOLO
+      detections_2d: "detections"  # Input: 2D detections from YOLO
       detections_3d: "detections_3d"  # Input: 3D detections from LiDAR
       image_raw: "camera/image_raw"   # Input: Raw camera image
       tracks_2d: "tracks_2d"          # Output: 2D tracks from ByteTrack
@@ -119,44 +117,32 @@ predictor_node:
   ros__parameters:
     # Input/Output Topics
     tracks_3d_topic: "tracks_3d"
-    predictions_topic: "trajectory_predictions"
+    topics.output_path_prefix: "/immkf/tracks"
+    topics.output_pose_prefix: "/immkf/poses"
     
-    # IMMKF Model Configuration
-    # Interaction Multiple Model (IMM) with Kalman Filtering
-    num_models: 2                      # Number of motion models (CV, CA, etc.)
+    # Multi-target Tracking Configuration
+    track_timeout_seconds: 5.0          # Timeout for inactive tracks (seconds)
+    max_tracks: 100                     # Maximum number of tracks to maintain
+    min_confidence: 0.0                 # Minimum confidence threshold for detections
     
-    # Constant Velocity Model (Model 0)
-    cv_process_noise: [0.5, 0.5, 0.5]  # Process noise for x, y, z (m²/s⁴)
-    cv_measurement_noise: [0.1, 0.1, 0.1]  # Measurement noise
+    # Publishing Configuration
+    publish_per_track: true             # Publish individual track trajectories
+    publish_aggregated: false           # Publish aggregated path for all tracks
     
-    # Constant Acceleration Model (Model 1)
-    ca_process_noise: [0.1, 0.1, 0.1]  # Process noise for acceleration
-    ca_measurement_noise: [0.1, 0.1, 0.1]  # Measurement noise
+    # Class Filtering (empty list means no filtering)
+    allowed_class_ids: [1]               # Empty array: all classes allowed
     
-    # Model Transition Probabilities
-    # Markov chain for mode switching
-    # ROS2 parameter does not support nested arrays, use row-major flattened matrix.
-    model_markov_matrix: [0.95, 0.05, 0.05, 0.95]
+    # Initial State Configuration (6D: x, y, z, vx, vy, vz)
+    initial_state: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+    initial_covariance_diagonal: [1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
     
-    # Initial Mode Probabilities
-    initial_mu: [0.5, 0.5]             # Initial probability for each model
-    
-    # Prediction Horizon
-    prediction_horizon: 2.0             # Prediction time (seconds)
+    # Prediction Configuration
     prediction_dt: 0.1                  # Prediction step time (seconds)
+    prediction_horizon: 10.0            # Prediction horizon (seconds)
     
-    # Track Association Parameters
-    max_track_age: 100                  # Maximum frames to keep inactive track
-    min_track_hits: 3                   # Minimum hits to start prediction
-    
-    # Filtering Parameters
-    gate_threshold: 3.0                 # Gating threshold (sigma)
-    max_distance: 50.0                  # Maximum association distance (meters)
-    
-    # Output Configuration
-    publish_predictions: true           # Publish trajectory predictions
-    publish_model_probabilities: true   # Publish IMM model probabilities
-    prediction_viz_enable: true         # Enable visualization of predictions
+    # Measurement Noise Configuration (x, y for 2D measurements)
+    measurement_noise_x: 1.0            # Measurement noise for x (meters²)
+    measurement_noise_y: 1.0            # Measurement noise for y (meters²)
 
 # ==================== MPC Gimbal Planner ====================
 planner_node:

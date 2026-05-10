@@ -22,7 +22,7 @@ PredictorNode::~PredictorNode()
 void PredictorNode::onConfigure()
 {
 	// Topic configuration
-	input_topic_ = this->declare_parameter<std::string>("topics.input", "/tracks_3d");
+	input_topic_ = this->declare_parameter<std::string>("tracks_3d_topic", "/tracks_3d");
 	output_path_topic_prefix_ = this->declare_parameter<std::string>("topics.output_path_prefix", "/immkf/tracks");
 	output_pose_topic_prefix_ = this->declare_parameter<std::string>("topics.output_pose_prefix", "/immkf/poses");
 
@@ -69,7 +69,7 @@ void PredictorNode::onConfigure()
 
 	// Create subscriptions and publishers
 	detection_sub_ = this->create_subscription<yolo_msgs::msg::DetectionArray>(
-		input_topic_, 10,
+		input_topic_, rclcpp::SensorDataQoS(),
 		std::bind(&PredictorNode::detectionsCallback, this, std::placeholders::_1));
 
 	if (publish_aggregated_) {
