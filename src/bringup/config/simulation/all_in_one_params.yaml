@@ -1,10 +1,10 @@
 ign_sim_pointcloud_tool:
   ros__parameters:
     pcd_topic: livox/lidar
-    n_scan: 128
-    horizon_scan: 128
+    n_scan: 512
+    horizon_scan: 512
     ang_bottom: 7.0
-    ang_res_y: 0.55  # 70.4 / 128
+    ang_res_y: 0.2687  # 70.4 / 128
 
 # ==================== 2D Object Detection (YOLO) ====================
 yolo_detector:
@@ -43,24 +43,24 @@ lidar_detector:
     output_markers_topic: "lidar_detections_markers"
     
     # DBSCAN Clustering Parameters
-    dbscan_eps: 0.5                    # Neighborhood radius (meters)
-    dbscan_min_pts: 5                  # Minimum points to form cluster
+    dbscan_eps: 1.5                    # Neighborhood radius (meters)
+    dbscan_min_pts: 1                  # Minimum points to form cluster
     
     # Height-based filtering (ground removal)
-    min_height: -0.5                   # Minimum height (meters)
-    max_height: 2.0                    # Maximum height (meters)
+    min_height: -10.0                   # Minimum height (meters)
+    max_height: 10.0                    # Maximum height (meters)
     
     # Distance-based filtering
-    min_distance: 0.1                  # Minimum detection distance
+    min_distance: 0.05                  # Minimum detection distance
     max_distance: 100.0                # Maximum detection distance
     
     # Confidence estimation
-    confidence_point_scale: 25.0       # Confidence scaling factor
+    confidence_point_scale: 1.0       # Confidence scaling factor
     publish_markers: true              # Publish 3D box markers for RViz
     
     # Bounding box filtering
-    min_bbox_size: 0.1                 # Minimum bbox dimension (meters)
-    max_bbox_size: 20.0                # Maximum bbox dimension (meters)
+    min_bbox_size: 0.01                 # Minimum bbox dimension (meters)
+    max_bbox_size: 0.5                # Maximum bbox dimension (meters)
 
 # ==================== Multi-Sensor Fusion ====================
 fusion_node:
