@@ -5,6 +5,9 @@
 #include <limits>
 #include <vector>
 
+#include <visualization_msgs/msg/marker.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
+
 namespace lidar_detector
 {
 
@@ -27,6 +30,10 @@ LidarDetectorNode::LidarDetectorNode(const rclcpp::NodeOptions & options)
   detections_pub_ = this->create_publisher<yolo_msgs::msg::DetectionArray>(
     output_detections_topic_,
     rclcpp::SensorDataQoS());
+
+  markers_pub_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
+    output_markers_topic_,
+    rclcpp::QoS(10));
 }
 
 LidarDetectorNode::~LidarDetectorNode()
@@ -39,15 +46,19 @@ void LidarDetectorNode::onConfigure()
   this->declare_parameter<double>("dbscan_eps", 0.5);
   this->declare_parameter<int>("dbscan_min_pts", 5);
   this->declare_parameter<double>("confidence_point_scale", 25.0);
+  this->declare_parameter<bool>("publish_markers", true);
   eps_ = this->get_parameter("dbscan_eps").as_double();
   min_pts_ = this->get_parameter("dbscan_min_pts").as_int();
   confidence_point_scale_ = this->get_parameter("confidence_point_scale").as_double();
+  publish_markers_ = this->get_parameter("publish_markers").as_bool();
 
   // Topic names
   this->declare_parameter<std::string>("input_pc_topic", "/cloud_registered");
   this->declare_parameter<std::string>("output_detections_topic", "/lidar_detections");
+  this->declare_parameter<std::string>("output_markers_topic", "/lidar_detections_markers");
   input_pc_topic_ = this->get_parameter("input_pc_topic").as_string();
   output_detections_topic_ = this->get_parameter("output_detections_topic").as_string();
+  output_markers_topic_ = this->get_parameter("output_markers_topic").as_string();
 }
 
 void LidarDetectorNode::onPointCloud(const sensor_msgs::msg::PointCloud2::SharedPtr msg)
@@ -133,6 +144,24 @@ void LidarDetectorNode::onPointCloud(const sensor_msgs::msg::PointCloud2::Shared
     detection_array.detections.push_back(detection);
   }
   detections_pub_->publish(detection_array);
+
+  if (publish_markers_) {
+    visualization_msgs::msg::MarkerArray marker_array;
+
+    visualization_msgs::msg::Marker delete_all;
+    delete_all.header = msg->header;
+    delete_all.action = visualization_msgs::msg::Marker::DELETEALL;
+    marker_array.markers.push_back(delete_all);
+
+    for (std::size_t i = 0; i < clusters.size(); ++i) {
+      const auto &cluster = clusters[i];
+      marker_array.markers.push_back(
+        makeBoxMarker(cluster.center, cluster.size, msg->header.frame_id,
+                      "lidar_cluster_boxes", static_cast<int>(i), cluster.confidence));
+    }
+
+    markers_pub_->publish(marker_array);
+  }
   
   // RCLCPP_DEBUG(this->get_logger(), "Point cloud received: %u points, %zu clusters detected",
   //              msg->width * msg->height, clusters.size());
@@ -142,17 +171,17 @@ void LidarDetectorNode::onPointCloud(const sensor_msgs::msg::PointCloud2::Shared
   {
     const auto &detection = detection_array.detections[i];
     const auto &bbox = detection.bbox3d;
-    // RCLCPP_INFO(this->get_logger(),
-    //             "Object %zu: score=%.3f center=(%.3f, %.3f, %.3f) size=(%.3f, %.3f, %.3f) points=%zu",
-    //             i + 1,
-    //             detection.score,
-    //             bbox.center.position.x,
-    //             bbox.center.position.y,
-    //             bbox.center.position.z,
-    //             bbox.size.x,
-    //             bbox.size.y,
-    //             bbox.size.z,
-    //             clusters[i].point_count);
+    RCLCPP_INFO(this->get_logger(),
+                "Object %zu: score=%.3f center=(%.3f, %.3f, %.3f) size=(%.3f, %.3f, %.3f) points=%zu",
+                i + 1,
+                detection.score,
+                bbox.center.position.x,
+                bbox.center.position.y,
+                bbox.center.position.z,
+                bbox.size.x,
+                bbox.size.y,
+                bbox.size.z,
+                clusters[i].point_count);
   }
 }
 
@@ -179,6 +208,33 @@ yolo_msgs::msg::Detection LidarDetectorNode::buildDetection(
   detection.bbox3d.size = size;
   detection.bbox3d.frame_id = frame_id;
   return detection;
+}
+
+visualization_msgs::msg::Marker LidarDetectorNode::makeBoxMarker(
+  const geometry_msgs::msg::Pose &center,
+  const geometry_msgs::msg::Vector3 &size,
+  const std::string &frame_id,
+  const std::string &ns,
+  int marker_id,
+  double confidence) const
+{
+  visualization_msgs::msg::Marker marker;
+  marker.header.frame_id = frame_id;
+  marker.header.stamp = this->now();
+  marker.ns = ns;
+  marker.id = marker_id;
+  marker.type = visualization_msgs::msg::Marker::CUBE;
+  marker.action = visualization_msgs::msg::Marker::ADD;
+  marker.pose = center;
+  marker.scale.x = size.x;
+  marker.scale.y = size.y;
+  marker.scale.z = size.z;
+  marker.color.r = static_cast<float>(1.0 - confidence);
+  marker.color.g = static_cast<float>(confidence);
+  marker.color.b = 0.1f;
+  marker.color.a = 0.35f;
+  marker.lifetime = rclcpp::Duration::from_seconds(0.2);
+  return marker;
 }
 
 } // namespace lidar_detector

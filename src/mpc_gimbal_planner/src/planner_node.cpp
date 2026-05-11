@@ -51,6 +51,11 @@ void PlannerNode::onConfigure()
 	prediction_dt_ = this->declare_parameter<double>("prediction_dt", 0.1);
 	control_rate_hz_ = this->declare_parameter<double>("control_rate_hz", 20.0);
 	target_timeout_sec_ = this->declare_parameter<double>("target_timeout_sec", 0.5);
+	
+	// Patrol mode configuration
+	enable_patrol_ = this->declare_parameter<bool>("enable_patrol", true);
+	control_mode_ = enable_patrol_ ? ControlMode::Patrol : ControlMode::Track;
+	
 	yaw_min_ = this->declare_parameter<double>("yaw_min", -1.57);
 	yaw_max_ = this->declare_parameter<double>("yaw_max", 1.57);
 	pitch_min_ = this->declare_parameter<double>("pitch_min", -0.8);

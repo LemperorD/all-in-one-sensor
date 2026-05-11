@@ -46,6 +46,7 @@ private:
 private: // 成员变量
   bool has_path_{false};
   bool has_state_{false};
+  bool enable_patrol_{true};
 
   ControlMode control_mode_{ControlMode::Patrol};
 

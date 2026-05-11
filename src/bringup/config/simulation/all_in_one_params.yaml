@@ -40,6 +40,7 @@ lidar_detector:
     # Sensor topic configuration
     input_pc_topic: "velodyne_points"  # Input point cloud topic
     output_detections_topic: "detections_3d"
+    output_markers_topic: "lidar_detections_markers"
     
     # DBSCAN Clustering Parameters
     dbscan_eps: 0.5                    # Neighborhood radius (meters)
@@ -55,6 +56,7 @@ lidar_detector:
     
     # Confidence estimation
     confidence_point_scale: 25.0       # Confidence scaling factor
+    publish_markers: true              # Publish 3D box markers for RViz
     
     # Bounding box filtering
     min_bbox_size: 0.1                 # Minimum bbox dimension (meters)
@@ -117,8 +119,8 @@ predictor_node:
   ros__parameters:
     # Input/Output Topics
     tracks_3d_topic: "tracks_3d"
-    topics.output_path_prefix: "/immkf/tracks"
-    topics.output_pose_prefix: "/immkf/poses"
+    topics.output_path_prefix: "immkf/tracks"
+    topics.output_pose_prefix: "immkf/poses"
     
     # Multi-target Tracking Configuration
     track_timeout_seconds: 5.0          # Timeout for inactive tracks (seconds)
@@ -127,7 +129,7 @@ predictor_node:
     
     # Publishing Configuration
     publish_per_track: true             # Publish individual track trajectories
-    publish_aggregated: false           # Publish aggregated path for all tracks
+    publish_aggregated: true           # Publish aggregated path for all tracks
     
     # Class Filtering (empty list means no filtering)
     allowed_class_ids: [1]               # Empty array: all classes allowed
@@ -148,7 +150,7 @@ predictor_node:
 planner_node:
   ros__parameters:
     # Topics
-    input_path_topic: "trajectory_predictions"
+    input_path_topic: "immkf/tracks/all_tracks"
     input_state_topic: "robot_base/gimbal_state"
     output_cmd_topic: "robot_base/gimbal_cmd"
 
@@ -159,17 +161,20 @@ planner_node:
     control_rate_hz: 30.0
     target_timeout_sec: 0.5
 
+    # Patrol mode
+    enable_patrol: false                 # Enable patrol mode when no target available
+
     # MPC weights
-    track_weight: 2.0
-    smooth_weight: 0.5
-    control_weight: 0.1
+    track_weight: 1.0
+    smooth_weight: 0.0
+    control_weight: 0.0
 
     # Angle limits and max angular rate
     yaw_min: -1.57
     yaw_max: 1.57
     pitch_min: -0.6
     pitch_max: 0.6
-    max_rate: 4.0
+    max_rate: 2.0
 
     # Patrol mode parameters
     patrol_yaw_rate: 0.5
