@@ -62,8 +62,8 @@ void RcGimbalNode::ctrl_thread()
       // Create and publish gimbal command using position control (ABSOLUTE_ANGLE)
       auto gimbal_cmd = simulator::msg::GimbalCmd();
       gimbal_cmd.tid = 0;
-      gimbal_cmd.yaw_type = simulator::msg::GimbalCmd::ABSOLUTE_ANGLE;
-      gimbal_cmd.pitch_type = simulator::msg::GimbalCmd::ABSOLUTE_ANGLE;
+      gimbal_cmd.yaw_type = simulator::msg::GimbalCmd::RELATIVE_ANGLE;
+      gimbal_cmd.pitch_type = simulator::msg::GimbalCmd::RELATIVE_ANGLE;
 
       // Map axis int16 -> normalized position in [-1,1]
       gimbal_cmd.position.yaw = -static_cast<float>(axis1) / 32768.0f;

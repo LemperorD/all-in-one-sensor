@@ -128,14 +128,14 @@ def generate_launch_description():
                 namespace=namespace,
                 parameters=[configured_params],
             ),
-            # MPC Gimbal Planner Component
-            ComposableNode(
-                package="mpc_gimbal_planner",
-                plugin="mpc_gimbal_planner::PlannerNode",
-                name="planner_node",
-                namespace=namespace,
-                parameters=[configured_params],
-            ),
+            # # MPC Gimbal Planner Component
+            # ComposableNode(
+            #     package="mpc_gimbal_planner",
+            #     plugin="mpc_gimbal_planner::PlannerNode",
+            #     name="planner_node",
+            #     namespace=namespace,
+            #     parameters=[configured_params],
+            # ),
         ],
     )
 
