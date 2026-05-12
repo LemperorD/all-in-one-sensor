@@ -155,12 +155,26 @@ def main():
     trans = np.array([[0.90,0.05,0.05],[0.05,0.90,0.05],[0.05,0.05,0.90]])
     imm = IMMKF(models, trans)
 
-    angle = 0.0
-    rate = 0.0
+    angle_yaw = 0.0
+    rate_yaw = 0.0
+    angle_pitch = 0.0
+    rate_pitch = 0.0
     last_target_yaw = None
+    last_target_pitch = None
     last_future_yaw = None
+    last_future_pitch = None
 
-    times=[]; target_angles=[]; pred_target_angles=[]; mpc_target_angles=[]; gimbal_angles=[]; errors=[]; rates=[]
+    # PID control parameters
+    Kp = 8.0
+    Ki = 1.0
+    Kd = 0.0
+    integral_error_yaw = 0.0
+    integral_error_pitch = 0.0
+    prev_error_yaw = 0.0
+    prev_error_pitch = 0.0
+
+    times=[]; target_yaw_angles=[]; pred_target_yaw_angles=[]; mpc_target_yaw_angles=[]; gimbal_yaw_angles=[]; yaw_errors=[]; yaw_rates=[]
+    target_pitch_angles=[]; pred_target_pitch_angles=[]; mpc_target_pitch_angles=[]; gimbal_pitch_angles=[]; pitch_errors=[]; pitch_rates=[]
     gt_history=[]; pred_history=[]; future_ref_history=[]
 
     def unwrap_angle(angle_rad, previous_angle_rad):
@@ -182,62 +196,113 @@ def main():
         pred = imm.future_positions(mpc.horizon_steps)
 
         future_ref_raw = [np.arctan2(p[1], p[0]) for p in pred]
+        future_pitch_raw = [np.arctan2(p[2], np.hypot(p[0], p[1])) for p in pred]
         future_ref = []
+        future_pitch = []
         previous_future_yaw = last_future_yaw
+        previous_future_pitch = last_future_pitch
         for value in future_ref_raw:
             unwrapped_value = unwrap_angle(value, previous_future_yaw)
             future_ref.append(unwrapped_value)
             previous_future_yaw = unwrapped_value
+        for value in future_pitch_raw:
+            unwrapped_value = unwrap_angle(value, previous_future_pitch)
+            future_pitch.append(unwrapped_value)
+            previous_future_pitch = unwrapped_value
         future_ref = np.array(future_ref)
+        future_pitch = np.array(future_pitch)
         last_future_yaw = future_ref[0]
+        last_future_pitch = future_pitch[0]
         future_ref_history.append(np.rad2deg(future_ref))
-        seq = mpc.solve_axis(angle, future_ref)
-        target_angle = seq[0]
+        seq_yaw = mpc.solve_axis(angle_yaw, future_ref)
+        seq_pitch = mpc.solve_axis(angle_pitch, future_pitch)
+        target_yaw = seq_yaw[0]
+        target_pitch = seq_pitch[0]
 
-        alpha = 18.0
-        rate += alpha * (target_angle - angle) * dt
-        rate = np.clip(rate, -mpc.max_rate, mpc.max_rate)
-        angle += rate * dt
+        # PID control for yaw
+        error_yaw = target_yaw - angle_yaw
+        integral_error_yaw += error_yaw * dt
+        d_error_yaw = (error_yaw - prev_error_yaw) / dt if dt > 0 else 0
+        pid_output_yaw = Kp * error_yaw + Ki * integral_error_yaw + Kd * d_error_yaw
+        rate_yaw = pid_output_yaw
+        rate_yaw = np.clip(rate_yaw, -mpc.max_rate, mpc.max_rate)
+        angle_yaw += rate_yaw * dt
+        prev_error_yaw = error_yaw
+
+        # PID control for pitch
+        error_pitch = target_pitch - angle_pitch
+        integral_error_pitch += error_pitch * dt
+        d_error_pitch = (error_pitch - prev_error_pitch) / dt if dt > 0 else 0
+        pid_output_pitch = Kp * error_pitch + Ki * integral_error_pitch + Kd * d_error_pitch
+        rate_pitch = pid_output_pitch
+        rate_pitch = np.clip(rate_pitch, -mpc.max_rate, mpc.max_rate)
+        angle_pitch += rate_pitch * dt
+        prev_error_pitch = error_pitch
 
         true_yaw = np.arctan2(gt[1], gt[0])
         true_yaw = unwrap_angle(true_yaw, last_target_yaw)
         last_target_yaw = true_yaw
 
+        true_pitch = np.arctan2(gt[2], np.hypot(gt[0], gt[1]))
+        true_pitch = unwrap_angle(true_pitch, last_target_pitch)
+        last_target_pitch = true_pitch
+
         times.append(t)
-        target_angles.append(np.rad2deg(true_yaw))
-        pred_target_angles.append(np.rad2deg(future_ref[0]))
-        mpc_target_angles.append(np.rad2deg(target_angle))
-        gimbal_angles.append(np.rad2deg(angle))
-        errors.append(np.rad2deg(true_yaw - angle))
-        rates.append(np.rad2deg(rate))
+        target_yaw_angles.append(np.rad2deg(true_yaw))
+        pred_target_yaw_angles.append(np.rad2deg(future_ref[0]))
+        mpc_target_yaw_angles.append(np.rad2deg(target_yaw))
+        gimbal_yaw_angles.append(np.rad2deg(angle_yaw))
+        yaw_errors.append(np.rad2deg(true_yaw - angle_yaw))
+        yaw_rates.append(np.rad2deg(rate_yaw))
+
+        target_pitch_angles.append(np.rad2deg(true_pitch))
+        pred_target_pitch_angles.append(np.rad2deg(future_pitch[0]))
+        mpc_target_pitch_angles.append(np.rad2deg(target_pitch))
+        gimbal_pitch_angles.append(np.rad2deg(angle_pitch))
+        pitch_errors.append(np.rad2deg(true_pitch - angle_pitch))
+        pitch_rates.append(np.rad2deg(rate_pitch))
+
         gt_history.append(gt)
         pred_history.append(pred)
 
     pd.DataFrame({
         'time': times,
-        'target_deg': target_angles,
-        'pred_target_deg': pred_target_angles,
-        'mpc_target_deg': mpc_target_angles,
-        'gimbal_deg': gimbal_angles,
-        'error_deg': errors,
-        'rate_deg_s': rates
+        'target_yaw_deg': target_yaw_angles,
+        'pred_target_yaw_deg': pred_target_yaw_angles,
+        'mpc_target_yaw_deg': mpc_target_yaw_angles,
+        'gimbal_yaw_deg': gimbal_yaw_angles,
+        'yaw_error_deg': yaw_errors,
+        'yaw_rate_deg_s': yaw_rates,
+        'target_pitch_deg': target_pitch_angles,
+        'pred_target_pitch_deg': pred_target_pitch_angles,
+        'mpc_target_pitch_deg': mpc_target_pitch_angles,
+        'gimbal_pitch_deg': gimbal_pitch_angles,
+        'pitch_error_deg': pitch_errors,
+        'pitch_rate_deg_s': pitch_rates
     }).to_csv(os.path.join(RESULT_DIR, 'imm_mpc_data.csv'), index=False)
 
     fig = plt.figure(figsize=(20, 10))
     gs = fig.add_gridspec(2, 3)
 
     margin = 5.0
-    ang_min = min(min(target_angles), min(gimbal_angles)) - margin
-    ang_max = max(max(target_angles), max(gimbal_angles)) + margin
-    err_min = min(errors) - margin
-    err_max = max(errors) + margin
-    rate_min = min(rates) - margin
-    rate_max = max(rates) + margin
+    ang_min = min(min(target_yaw_angles), min(gimbal_yaw_angles)) - margin
+    ang_max = max(max(target_yaw_angles), max(gimbal_yaw_angles)) + margin
+    pitch_min = min(min(target_pitch_angles), min(gimbal_pitch_angles)) - margin
+    pitch_max = max(max(target_pitch_angles), max(gimbal_pitch_angles)) + margin
+    yaw_err_min = min(yaw_errors) - margin
+    yaw_err_max = max(yaw_errors) + margin
+    pitch_err_min = min(pitch_errors) - margin
+    pitch_err_max = max(pitch_errors) + margin
+    yaw_rate_min = min(yaw_rates) - margin
+    yaw_rate_max = max(yaw_rates) + margin
+    pitch_rate_min = min(pitch_rates) - margin
+    pitch_rate_max = max(pitch_rates) + margin
     ax3d = fig.add_subplot(gs[0, 0], projection='3d')
     ax_track = fig.add_subplot(gs[0, 1])
-    ax_err = fig.add_subplot(gs[0, 2])
-    ax_rate = fig.add_subplot(gs[1, 0])
-    ax_future = fig.add_subplot(gs[1, 1])
+    ax_pitch = fig.add_subplot(gs[0, 2])
+    ax_err = fig.add_subplot(gs[1, 0])
+    ax_rate = fig.add_subplot(gs[1, 1])
+    ax_future = fig.add_subplot(gs[1, 2])
 
     line_gt_3d, = ax3d.plot([], [], [], label='Target')
     line_pred_3d, = ax3d.plot([], [], [], '--', label='Prediction')
@@ -246,26 +311,36 @@ def main():
     ax3d.legend()
     ax3d.set_title('3D Target + Gimbal')
 
-    line_target, = ax_track.plot([], [], label='Real target')
-    line_pred_target, = ax_track.plot([], [], label='Predicted target')
-    line_mpc_target, = ax_track.plot([], [], label='MPC command')
-    line_gimbal, = ax_track.plot([], [], label='Gimbal')
+    line_target, = ax_track.plot([], [], label='Real yaw')
+    line_pred_target, = ax_track.plot([], [], label='Pred yaw')
+    line_mpc_target, = ax_track.plot([], [], label='MPC yaw')
+    line_gimbal, = ax_track.plot([], [], label='Gimbal yaw')
     ax_track.set_xlim(0, sim_time); ax_track.set_ylim(ang_min, ang_max)
-    ax_track.set_title('Real / Predicted / MPC / Gimbal')
+    ax_track.set_title('Yaw: Real / Predicted / MPC / Gimbal')
     ax_track.set_xlabel('Time (s)')
     ax_track.set_ylabel('Angle (deg)')
     ax_track.grid(True); ax_track.legend()
 
-    line_error, = ax_err.plot([], [])
-    ax_err.set_xlim(0, sim_time); ax_err.set_ylim(err_min, err_max)
-    ax_err.set_title('Tracking Error')
+    line_pitch_target, = ax_pitch.plot([], [], label='Real pitch')
+    line_pitch_pred_target, = ax_pitch.plot([], [], label='Pred pitch')
+    line_pitch_mpc_target, = ax_pitch.plot([], [], label='MPC pitch')
+    line_pitch_gimbal, = ax_pitch.plot([], [], label='Gimbal pitch')
+    ax_pitch.set_xlim(0, sim_time); ax_pitch.set_ylim(pitch_min, pitch_max)
+    ax_pitch.set_title('Pitch: Real / Predicted / MPC / Gimbal')
+    ax_pitch.set_xlabel('Time (s)')
+    ax_pitch.set_ylabel('Angle (deg)')
+    ax_pitch.grid(True); ax_pitch.legend()
+
+    line_error, = ax_err.plot([], [], label='Yaw error')
+    ax_err.set_xlim(0, sim_time); ax_err.set_ylim(yaw_err_min, yaw_err_max)
+    ax_err.set_title('Yaw Tracking Error')
     ax_err.set_xlabel('Time (s)')
     ax_err.set_ylabel('Error (deg)')
     ax_err.grid(True)
 
-    line_rate, = ax_rate.plot([], [])
-    ax_rate.set_xlim(0, sim_time); ax_rate.set_ylim(rate_min, rate_max)
-    ax_rate.set_title('Gimbal Angular Rate')
+    line_rate, = ax_rate.plot([], [], label='Yaw rate')
+    ax_rate.set_xlim(0, sim_time); ax_rate.set_ylim(yaw_rate_min, yaw_rate_max)
+    ax_rate.set_title('Yaw Angular Rate')
     ax_rate.set_xlabel('Time (s)')
     ax_rate.set_ylabel('Rate (deg/s)')
     ax_rate.grid(True)
@@ -282,12 +357,26 @@ def main():
         if frame < 2:
             frame = 2
         t = times[:frame]
-        line_target.set_data(t, target_angles[:frame])
-        line_pred_target.set_data(t, pred_target_angles[:frame])
-        line_mpc_target.set_data(t, mpc_target_angles[:frame])
-        line_gimbal.set_data(t, gimbal_angles[:frame])
-        line_error.set_data(t, errors[:frame])
-        line_rate.set_data(t, rates[:frame])
+        line_target.set_data(t, target_yaw_angles[:frame])
+        line_pred_target.set_data(t, pred_target_yaw_angles[:frame])
+        line_mpc_target.set_data(t, mpc_target_yaw_angles[:frame])
+        line_gimbal.set_data(t, gimbal_yaw_angles[:frame])
+        line_pitch_target.set_data(t, target_pitch_angles[:frame])
+        line_pitch_pred_target.set_data(t, pred_target_pitch_angles[:frame])
+        line_pitch_mpc_target.set_data(t, mpc_target_pitch_angles[:frame])
+        line_pitch_gimbal.set_data(t, gimbal_pitch_angles[:frame])
+        line_error.set_data(t, yaw_errors[:frame])
+        line_rate.set_data(t, yaw_rates[:frame])
+
+        err_window = np.array(yaw_errors[:frame])
+        err_span = max(np.max(err_window) - np.min(err_window), 1.0)
+        err_margin = max(2.0, 0.2 * err_span)
+        ax_err.set_ylim(np.min(err_window) - err_margin, np.max(err_window) + err_margin)
+
+        pitch_err_window = np.array(pitch_errors[:frame])
+        pitch_err_span = max(np.max(pitch_err_window) - np.min(pitch_err_window), 1.0)
+        pitch_err_margin = max(2.0, 0.2 * pitch_err_span)
+        ax_pitch.set_ylim(np.min(pitch_err_window) - pitch_err_margin, np.max(pitch_err_window) + pitch_err_margin)
 
         gt = np.array(gt_history[:frame])
         line_gt_3d.set_data(gt[:,0], gt[:,1])
@@ -302,13 +391,21 @@ def main():
         future_ref = future_ref_history[frame-1]
         future_steps = np.arange(len(future_ref))
         line_future.set_data(future_steps, future_ref)
-        ax_future.set_ylim(np.min(future_ref) - 5, np.max(future_ref) + 5)
+        future_window = np.concatenate(future_ref_history[:frame])
+        future_span = max(np.max(future_window) - np.min(future_window), 1.0)
+        future_margin = max(5.0, 0.15 * future_span)
+        ax_future.set_ylim(np.min(future_window) - future_margin, np.max(future_window) + future_margin)
 
         ax3d.collections.clear()
-        yaw = np.deg2rad(gimbal_angles[frame-1])
-        ax3d.quiver(0, 0, 0, 15*np.cos(yaw), 15*np.sin(yaw), 0, length=1.0)
+        yaw = np.deg2rad(gimbal_yaw_angles[frame-1])
+        pitch = np.deg2rad(gimbal_pitch_angles[frame-1])
+        ax3d.quiver(0, 0, 0,
+                15*np.cos(pitch)*np.cos(yaw),
+                15*np.cos(pitch)*np.sin(yaw),
+                15*np.sin(pitch),
+                length=1.0)
 
-        return line_target, line_pred_target, line_mpc_target, line_gimbal, line_error, line_rate, line_future, line_gt_3d, line_pred_3d, point_target_3d
+        return line_target, line_pred_target, line_mpc_target, line_gimbal, line_pitch_target, line_pitch_pred_target, line_pitch_mpc_target, line_pitch_gimbal, line_error, line_rate, line_future, line_gt_3d, line_pred_3d, point_target_3d
 
     ani = FuncAnimation(fig, update, frames=len(times), interval=20)
     gif_path = os.path.join(RESULT_DIR, 'imm_mpc_tracking.gif')
