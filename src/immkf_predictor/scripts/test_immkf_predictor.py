@@ -1,46 +1,24 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-"""
-Full IMMKF Demonstration
-=====================================
-
-Features:
-- CV model
-- CA model
-- Singer model
-- CT model
-- IMM interaction
-- 3D UAV trajectory
-- Noisy measurements
-- Model probability evolution
-- GIF animation generation
-
-Author: ChatGPT
-"""
-
 import os
 import numpy as np
 import matplotlib.pyplot as plt
 
-from mpl_toolkits.mplot3d import Axes3D
 from matplotlib.animation import FuncAnimation, PillowWriter
 
 
 # =========================================================
 # Result directory
 # =========================================================
-
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 RESULT_DIR = os.path.join(SCRIPT_DIR, "results")
-
 os.makedirs(RESULT_DIR, exist_ok=True)
 
 
 # =========================================================
 # Basic Linear Kalman Filter
 # =========================================================
-
 class KalmanFilter:
 
     def __init__(self, dim_x, dim_z):
@@ -52,7 +30,6 @@ class KalmanFilter:
         self.P = np.eye(dim_x)
 
         self.F = np.eye(dim_x)
-
         self.H = np.zeros((dim_z, dim_x))
 
         self.Q = np.eye(dim_x) * 0.01
@@ -61,13 +38,11 @@ class KalmanFilter:
     def predict(self):
 
         self.x = self.F @ self.x
-
         self.P = self.F @ self.P @ self.F.T + self.Q
 
     def update(self, z):
 
         y = z - self.H @ self.x
-
         S = self.H @ self.P @ self.H.T + self.R
 
         K = self.P @ self.H.T @ np.linalg.inv(S)
@@ -75,12 +50,9 @@ class KalmanFilter:
         self.x = self.x + K @ y
 
         I = np.eye(self.dim_x)
-
         self.P = (I - K @ self.H) @ self.P
 
-        # likelihood
         det_S = np.linalg.det(S)
-
         if det_S < 1e-6:
             det_S = 1e-6
 
@@ -96,7 +68,6 @@ class KalmanFilter:
 # =========================================================
 # CV Model
 # =========================================================
-
 class CVModel(KalmanFilter):
 
     def __init__(self, dt):
@@ -104,7 +75,6 @@ class CVModel(KalmanFilter):
         super().__init__(6, 3)
 
         self.dt = dt
-
         self.F = np.eye(6)
 
         for i in range(3):
@@ -120,7 +90,6 @@ class CVModel(KalmanFilter):
 # =========================================================
 # CA Model
 # =========================================================
-
 class CAModel(KalmanFilter):
 
     def __init__(self, dt):
@@ -128,14 +97,11 @@ class CAModel(KalmanFilter):
         super().__init__(9, 3)
 
         self.dt = dt
-
         self.F = np.eye(9)
 
         for i in range(3):
-
             self.F[i, i + 3] = dt
             self.F[i, i + 6] = 0.5 * dt * dt
-
             self.F[i + 3, i + 6] = dt
 
         self.H[0, 0] = 1
@@ -148,7 +114,6 @@ class CAModel(KalmanFilter):
 # =========================================================
 # Singer Model
 # =========================================================
-
 class SingerModel(KalmanFilter):
 
     def __init__(self, dt, alpha=0.95):
@@ -163,10 +128,8 @@ class SingerModel(KalmanFilter):
         self.F = np.eye(9)
 
         for i in range(3):
-
             self.F[i, i + 3] = dt
             self.F[i + 3, i + 6] = (1 - e)
-
             self.F[i + 6, i + 6] = e
 
         self.H[0, 0] = 1
@@ -179,7 +142,6 @@ class SingerModel(KalmanFilter):
 # =========================================================
 # CT Model
 # =========================================================
-
 class CTModel(KalmanFilter):
 
     def __init__(self, dt):
@@ -197,44 +159,26 @@ class CTModel(KalmanFilter):
     def predict(self):
 
         x, y, z, v, yaw, yaw_rate, vz = self.x
-
         dt = self.dt
 
         if abs(yaw_rate) < 1e-4:
-
             x += v * np.cos(yaw) * dt
             y += v * np.sin(yaw) * dt
-
         else:
-
-            x += (
-                v / yaw_rate
-                * (
-                    np.sin(yaw + yaw_rate * dt)
-                    - np.sin(yaw)
-                )
+            x += v / yaw_rate * (
+                np.sin(yaw + yaw_rate * dt) - np.sin(yaw)
             )
 
-            y += (
-                v / yaw_rate
-                * (
-                    -np.cos(yaw + yaw_rate * dt)
-                    + np.cos(yaw)
-                )
+            y += v / yaw_rate * (
+                -np.cos(yaw + yaw_rate * dt) + np.cos(yaw)
             )
 
         z += vz * dt
-
         yaw += yaw_rate * dt
 
         self.x = np.array([
-            x,
-            y,
-            z,
-            v,
-            yaw,
-            yaw_rate,
-            vz
+            x, y, z,
+            v, yaw, yaw_rate, vz
         ])
 
         self.P = self.P + self.Q
@@ -243,17 +187,13 @@ class CTModel(KalmanFilter):
 # =========================================================
 # IMM Filter
 # =========================================================
-
 class IMMKF:
 
     def __init__(self, models, transition_matrix):
 
         self.models = models
-
         self.M = len(models)
-
         self.transition_matrix = transition_matrix
-
         self.mu = np.ones(self.M) / self.M
 
     def predict(self):
@@ -266,12 +206,9 @@ class IMMKF:
         likelihoods = np.zeros(self.M)
 
         for i, model in enumerate(self.models):
-
             likelihoods[i] = model.update(z)
 
-        # model probability update
         self.mu = self.mu * likelihoods
-
         self.mu /= np.sum(self.mu)
 
     def fused_position(self):
@@ -279,7 +216,6 @@ class IMMKF:
         pos = np.zeros(3)
 
         for i, model in enumerate(self.models):
-
             pos += self.mu[i] * model.x[0:3]
 
         return pos
@@ -288,11 +224,9 @@ class IMMKF:
 # =========================================================
 # Generate UAV trajectory
 # =========================================================
-
 def generate_uav_trajectory():
 
     gt = []
-
     dt = 0.1
 
     x = 0
@@ -303,52 +237,33 @@ def generate_uav_trajectory():
     vy = 0
     vz = 0.1
 
-    # =====================================================
-    # Phase 1 : CV
-    # =====================================================
-
-    for _ in range(50):
-
+    # phase 1 CV
+    for _ in range(200):
         x += vx * dt
         y += vy * dt
         z += vz * dt
-
         gt.append([x, y, z])
 
-    # =====================================================
-    # Phase 2 : Acceleration
-    # =====================================================
-
+    # phase 2 CA
     ax = 0.05
 
-    for _ in range(50):
-
+    for _ in range(200):
         vx += ax * dt
-
         x += vx * dt
         y += vy * dt
         z += vz * dt
-
         gt.append([x, y, z])
 
-    # =====================================================
-    # Phase 3 : Turning
-    # =====================================================
-
+    # phase 3 CT
     yaw = 0
-
     speed = 2.0
-
     yaw_rate = np.deg2rad(20)
 
     for _ in range(100):
-
         yaw += yaw_rate * dt
-
         x += speed * np.cos(yaw) * dt
         y += speed * np.sin(yaw) * dt
         z += vz * dt
-
         gt.append([x, y, z])
 
     return np.array(gt)
@@ -357,105 +272,87 @@ def generate_uav_trajectory():
 # =========================================================
 # Main
 # =========================================================
-
 def main():
 
     dt = 0.1
 
     gt = generate_uav_trajectory()
 
-    noise_std = 0.5
+    noise_std = 0.25
+    measurements = gt + np.random.randn(*gt.shape) * noise_std
 
-    measurements = (
-        gt
-        + np.random.randn(*gt.shape) * noise_std
-    )
-
-    # =====================================================
-    # Create models
-    # =====================================================
-
+    # models
     cv = CVModel(dt)
-
     ca = CAModel(dt)
-
     singer = SingerModel(dt)
-
     ct = CTModel(dt)
 
     models = [cv, ca, singer, ct]
 
-    # initialize
     for model in models:
-
         model.x[0:3] = measurements[0]
 
-    # CT initialization
     ct.x[3] = 1.0
     ct.x[4] = 0.0
     ct.x[5] = np.deg2rad(10)
     ct.x[6] = 0.1
 
-    # =====================================================
-    # IMM
-    # =====================================================
-
     transition_matrix = np.array([
-
         [0.90, 0.03, 0.03, 0.04],
         [0.03, 0.90, 0.03, 0.04],
         [0.03, 0.03, 0.90, 0.04],
         [0.03, 0.03, 0.04, 0.90]
-
     ])
 
     imm = IMMKF(models, transition_matrix)
 
     fused_positions = []
-
     model_probs = []
 
-    # =====================================================
-    # Filtering loop
-    # =====================================================
+    cv_errors = []
+    ca_errors = []
+    singer_errors = []
+    ct_errors = []
+    imm_errors = []
 
-    for z in measurements:
+    # filtering
+    for idx, z in enumerate(measurements):
 
         imm.predict()
-
         imm.update(z)
 
-        fused_positions.append(
-            imm.fused_position()
-        )
+        fused = imm.fused_position()
 
-        model_probs.append(
-            imm.mu.copy()
-        )
+        fused_positions.append(fused)
+        model_probs.append(imm.mu.copy())
+
+        gt_pos = gt[idx]
+
+        cv_errors.append(np.linalg.norm(cv.x[0:3] - gt_pos))
+        ca_errors.append(np.linalg.norm(ca.x[0:3] - gt_pos))
+        singer_errors.append(np.linalg.norm(singer.x[0:3] - gt_pos))
+        ct_errors.append(np.linalg.norm(ct.x[0:3] - gt_pos))
+        imm_errors.append(np.linalg.norm(fused - gt_pos))
 
     fused_positions = np.array(fused_positions)
-
     model_probs = np.array(model_probs)
 
     # =====================================================
     # Animation
     # =====================================================
+    fig = plt.figure(figsize=(20, 7))
 
-    fig = plt.figure(figsize=(14, 7))
-
-    ax3d = fig.add_subplot(121, projection='3d')
-
-    ax_prob = fig.add_subplot(122)
+    ax3d = fig.add_subplot(131, projection='3d')
+    ax_prob = fig.add_subplot(132)
+    ax_err = fig.add_subplot(133)
 
     def update(frame):
 
         ax3d.clear()
         ax_prob.clear()
+        ax_err.clear()
 
-        # =============================================
-        # 3D Trajectory
-        # =============================================
-
+        # ---------------- 3D trajectory ----------------
         ax3d.plot(
             gt[:frame, 0],
             gt[:frame, 1],
@@ -482,28 +379,16 @@ def main():
         )
 
         ax3d.set_title("3D UAV Trajectory")
-
         ax3d.set_xlabel("X")
         ax3d.set_ylabel("Y")
         ax3d.set_zlabel("Z")
-
         ax3d.legend()
 
-        # =============================================
-        # Model probabilities
-        # =============================================
-
+        # ---------------- model probability ----------------
         t = np.arange(frame)
-
-        labels = [
-            "CV",
-            "CA",
-            "Singer",
-            "CT"
-        ]
+        labels = ["CV", "CA", "Singer", "CT"]
 
         for i in range(4):
-
             ax_prob.plot(
                 t,
                 model_probs[:frame, i],
@@ -511,33 +396,40 @@ def main():
             )
 
         ax_prob.set_ylim([0, 1])
-
         ax_prob.set_title("Model Probabilities")
-
         ax_prob.set_xlabel("Frame")
         ax_prob.set_ylabel("Probability")
-
         ax_prob.legend()
-
         ax_prob.grid(True)
 
-    anim = FuncAnimation(
+        # ---------------- error plot ----------------
+        ax_err.plot(t, cv_errors[:frame], label='CV')
+        ax_err.plot(t, ca_errors[:frame], label='CA')
+        ax_err.plot(t, singer_errors[:frame], label='Singer')
+        ax_err.plot(t, ct_errors[:frame], label='CT')
+        ax_err.plot(
+            t,
+            imm_errors[:frame],
+            linewidth=3,
+            linestyle='--',
+            label='IMMKF'
+        )
 
+        ax_err.set_title("Prediction Error")
+        ax_err.set_xlabel("Frame")
+        ax_err.set_ylabel("Position Error (m)")
+        ax_err.legend()
+        ax_err.grid(True)
+
+    anim = FuncAnimation(
         fig,
         update,
         frames=len(gt),
         interval=50
-
     )
 
-    # =====================================================
-    # Save GIF
-    # =====================================================
-
-    gif_path = os.path.join(
-        RESULT_DIR,
-        "immkf_demo.gif"
-    )
+    gif_path = os.path.join(RESULT_DIR, "immkf_demo.gif")
+    png_path = os.path.join(RESULT_DIR, "immkf_final.png")
 
     print("\nSaving GIF animation...")
 
@@ -546,31 +438,19 @@ def main():
         writer=PillowWriter(fps=20)
     )
 
-    print("\n======================================")
-    print("DONE")
-    print("======================================")
-
-    print(f"\nGIF saved to:\n{gif_path}")
-
-    # =====================================================
-    # Save final figure
-    # =====================================================
-
-    png_path = os.path.join(
-        RESULT_DIR,
-        "immkf_final.png"
-    )
-
     plt.savefig(
         png_path,
         dpi=200
     )
 
+    print("\n======================================")
+    print("DONE")
+    print("======================================")
+    print(f"\nGIF saved to:\n{gif_path}")
     print(f"\nPNG saved to:\n{png_path}")
 
     plt.show()
 
 
 if __name__ == "__main__":
-
     main()
