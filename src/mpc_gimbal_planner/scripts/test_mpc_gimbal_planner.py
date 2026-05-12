@@ -125,18 +125,71 @@ class MPCGimbal:
         self.horizon_steps = 20
         self.prediction_dt = 0.02
         self.track_weight = 20.0
+        self.smooth_weight = 20.0
+        self.control_weight = 0.0
         self.max_rate = np.deg2rad(250)
-        self.angle_min = np.deg2rad(-180)
-        self.angle_max = np.deg2rad(180)
 
-    def solve_axis(self, current_angle, ref_seq):
+    def solve_axis(self, current_angle, current_rate, ref_seq):
         ref = np.array(ref_seq)
         ref = ref[:self.horizon_steps]
         if len(ref) < self.horizon_steps:
             ref = np.pad(ref, (0, self.horizon_steps - len(ref)), mode='edge')
+
+        horizon = len(ref)
+        hessian = np.zeros((horizon, horizon), dtype=float)
+        gradient = np.zeros(horizon, dtype=float)
+
+        def add_quadratic_term(coefficients, constant, weight):
+            for row, coeff_row in coefficients:
+                gradient[row] += -2.0 * weight * constant * coeff_row
+                for col, coeff_col in coefficients:
+                    hessian[row, col] += 2.0 * weight * coeff_row * coeff_col
+
+        # 1) Tracking term: keep the planned angles close to the predicted reference.
+        for i in range(horizon):
+            add_quadratic_term([(i, 1.0)], ref[i], self.track_weight)
+
+        # 2) Smoothness term: penalize step-to-step jumps in the planned sequence.
+        for i in range(horizon):
+            if i == 0:
+                add_quadratic_term([(0, 1.0)], current_angle, self.smooth_weight)
+            else:
+                add_quadratic_term([(i, 1.0), (i - 1, -1.0)], 0.0, self.smooth_weight)
+
+        # 3) Control term: penalize angular acceleration / jerk through finite differences.
+        control_weight = self.control_weight / (self.prediction_dt * self.prediction_dt)
+        if horizon >= 1:
+            add_quadratic_term(
+                [(0, 1.0)],
+                current_angle + self.prediction_dt * current_rate,
+                control_weight)
+        if horizon >= 2:
+            add_quadratic_term(
+                [(1, 1.0), (0, -2.0)],
+                current_angle,
+                control_weight)
+        for i in range(2, horizon):
+            add_quadratic_term(
+                [(i, 1.0), (i - 1, -2.0), (i - 2, 1.0)],
+                0.0,
+                control_weight)
+
+        hessian += np.eye(horizon) * 1e-6
+
+        try:
+            planned = np.linalg.solve(hessian, -gradient)
+        except np.linalg.LinAlgError:
+            planned = ref.copy()
+
         max_delta = self.max_rate * self.prediction_dt
-        ref[0] = np.clip(ref[0], current_angle - max_delta, current_angle + max_delta)
-        return ref
+        projected = planned.copy()
+        for _ in range(4):
+            previous_angle = current_angle
+            for i in range(horizon):
+                projected[i] = np.clip(projected[i], previous_angle - max_delta, previous_angle + max_delta)
+                previous_angle = projected[i]
+
+        return projected
 
 # ============================
 # 主程序
@@ -214,8 +267,8 @@ def main():
         last_future_yaw = future_ref[0]
         last_future_pitch = future_pitch[0]
         future_ref_history.append(np.rad2deg(future_ref))
-        seq_yaw = mpc.solve_axis(angle_yaw, future_ref)
-        seq_pitch = mpc.solve_axis(angle_pitch, future_pitch)
+        seq_yaw = mpc.solve_axis(angle_yaw, rate_yaw, future_ref)
+        seq_pitch = mpc.solve_axis(angle_pitch, rate_pitch, future_pitch)
         target_yaw = seq_yaw[0]
         target_pitch = seq_pitch[0]
 
@@ -281,8 +334,8 @@ def main():
         'pitch_rate_deg_s': pitch_rates
     }).to_csv(os.path.join(RESULT_DIR, 'imm_mpc_data.csv'), index=False)
 
-    fig = plt.figure(figsize=(20, 10))
-    gs = fig.add_gridspec(2, 3)
+    fig = plt.figure(figsize=(24, 10))
+    gs = fig.add_gridspec(2, 4)
 
     margin = 5.0
     ang_min = min(min(target_yaw_angles), min(gimbal_yaw_angles)) - margin
@@ -300,9 +353,11 @@ def main():
     ax3d = fig.add_subplot(gs[0, 0], projection='3d')
     ax_track = fig.add_subplot(gs[0, 1])
     ax_pitch = fig.add_subplot(gs[0, 2])
+    ax_future = fig.add_subplot(gs[0, 3])
     ax_err = fig.add_subplot(gs[1, 0])
     ax_rate = fig.add_subplot(gs[1, 1])
-    ax_future = fig.add_subplot(gs[1, 2])
+    ax_pitch_err = fig.add_subplot(gs[1, 2])
+    ax_pitch_rate = fig.add_subplot(gs[1, 3])
 
     line_gt_3d, = ax3d.plot([], [], [], label='Target')
     line_pred_3d, = ax3d.plot([], [], [], '--', label='Prediction')
@@ -345,6 +400,20 @@ def main():
     ax_rate.set_ylabel('Rate (deg/s)')
     ax_rate.grid(True)
 
+    line_pitch_error, = ax_pitch_err.plot([], [], label='Pitch error')
+    ax_pitch_err.set_xlim(0, sim_time); ax_pitch_err.set_ylim(pitch_err_min, pitch_err_max)
+    ax_pitch_err.set_title('Pitch Tracking Error')
+    ax_pitch_err.set_xlabel('Time (s)')
+    ax_pitch_err.set_ylabel('Error (deg)')
+    ax_pitch_err.grid(True)
+
+    line_pitch_rate, = ax_pitch_rate.plot([], [], label='Pitch rate')
+    ax_pitch_rate.set_xlim(0, sim_time); ax_pitch_rate.set_ylim(pitch_rate_min, pitch_rate_max)
+    ax_pitch_rate.set_title('Pitch Angular Rate')
+    ax_pitch_rate.set_xlabel('Time (s)')
+    ax_pitch_rate.set_ylabel('Rate (deg/s)')
+    ax_pitch_rate.grid(True)
+
     line_future, = ax_future.plot([], [], label='IMM future yaw')
     ax_future.set_xlim(0, mpc.horizon_steps - 1)
     ax_future.set_title('IMM Predicted Angle Sequence')
@@ -367,16 +436,28 @@ def main():
         line_pitch_gimbal.set_data(t, gimbal_pitch_angles[:frame])
         line_error.set_data(t, yaw_errors[:frame])
         line_rate.set_data(t, yaw_rates[:frame])
+        line_pitch_error.set_data(t, pitch_errors[:frame])
+        line_pitch_rate.set_data(t, pitch_rates[:frame])
 
         err_window = np.array(yaw_errors[:frame])
         err_span = max(np.max(err_window) - np.min(err_window), 1.0)
         err_margin = max(2.0, 0.2 * err_span)
         ax_err.set_ylim(np.min(err_window) - err_margin, np.max(err_window) + err_margin)
 
+        rate_window = np.array(yaw_rates[:frame])
+        rate_span = max(np.max(rate_window) - np.min(rate_window), 1.0)
+        rate_margin = max(2.0, 0.2 * rate_span)
+        ax_rate.set_ylim(np.min(rate_window) - rate_margin, np.max(rate_window) + rate_margin)
+
         pitch_err_window = np.array(pitch_errors[:frame])
         pitch_err_span = max(np.max(pitch_err_window) - np.min(pitch_err_window), 1.0)
         pitch_err_margin = max(2.0, 0.2 * pitch_err_span)
-        ax_pitch.set_ylim(np.min(pitch_err_window) - pitch_err_margin, np.max(pitch_err_window) + pitch_err_margin)
+        ax_pitch_err.set_ylim(np.min(pitch_err_window) - pitch_err_margin, np.max(pitch_err_window) + pitch_err_margin)
+
+        pitch_rate_window = np.array(pitch_rates[:frame])
+        pitch_rate_span = max(np.max(pitch_rate_window) - np.min(pitch_rate_window), 1.0)
+        pitch_rate_margin = max(2.0, 0.2 * pitch_rate_span)
+        ax_pitch_rate.set_ylim(np.min(pitch_rate_window) - pitch_rate_margin, np.max(pitch_rate_window) + pitch_rate_margin)
 
         gt = np.array(gt_history[:frame])
         line_gt_3d.set_data(gt[:,0], gt[:,1])
@@ -405,7 +486,7 @@ def main():
                 15*np.sin(pitch),
                 length=1.0)
 
-        return line_target, line_pred_target, line_mpc_target, line_gimbal, line_pitch_target, line_pitch_pred_target, line_pitch_mpc_target, line_pitch_gimbal, line_error, line_rate, line_future, line_gt_3d, line_pred_3d, point_target_3d
+        return line_target, line_pred_target, line_mpc_target, line_gimbal, line_pitch_target, line_pitch_pred_target, line_pitch_mpc_target, line_pitch_gimbal, line_error, line_rate, line_pitch_error, line_pitch_rate, line_future, line_gt_3d, line_pred_3d, point_target_3d
 
     ani = FuncAnimation(fig, update, frames=len(times), interval=20)
     gif_path = os.path.join(RESULT_DIR, 'imm_mpc_tracking.gif')
