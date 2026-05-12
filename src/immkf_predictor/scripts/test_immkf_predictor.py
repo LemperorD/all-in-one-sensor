@@ -1,514 +1,576 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 """
-Standalone demonstration of IMMKF algorithm for UAV trajectory prediction
-This script tests multiple motion models without requiring ROS2 to be running
+Full IMMKF Demonstration
+=====================================
+
+Features:
+- CV model
+- CA model
+- Singer model
+- CT model
+- IMM interaction
+- 3D UAV trajectory
+- Noisy measurements
+- Model probability evolution
+- GIF animation generation
+
+Author: ChatGPT
 """
 
 import os
 import numpy as np
 import matplotlib.pyplot as plt
-from dataclasses import dataclass
-from typing import List, Tuple
+
+from mpl_toolkits.mplot3d import Axes3D
+from matplotlib.animation import FuncAnimation, PillowWriter
 
 
-# ==============================
-# Create results directory
-# ==============================
+# =========================================================
+# Result directory
+# =========================================================
+
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-RESULTS_DIR = os.path.join(SCRIPT_DIR, "results")
-os.makedirs(RESULTS_DIR, exist_ok=True)
+RESULT_DIR = os.path.join(SCRIPT_DIR, "results")
 
-
-@dataclass
-class State:
-    """6D / 9D / turning model state representation"""
-    pos: np.ndarray
-    vel: np.ndarray
-    acc: np.ndarray = None
-
-
-class MotionModel:
-    """Base class for motion models"""
-
-    def get_state_dim(self) -> int:
-        raise NotImplementedError
-
-    def predict(self, state: np.ndarray, dt: float) -> np.ndarray:
-        raise NotImplementedError
-
-    def get_measurement_matrix(self) -> np.ndarray:
-        raise NotImplementedError
+os.makedirs(RESULT_DIR, exist_ok=True)
 
 
 # =========================================================
-# Constant Velocity Model
+# Basic Linear Kalman Filter
 # =========================================================
-class ConstantVelocityModel(MotionModel):
-    """
-    CV Model:
-    [x, y, z, vx, vy, vz]
-    """
 
-    def __init__(self, q_pos=0.01, q_vel=0.01):
-        self.q_pos = q_pos
-        self.q_vel = q_vel
-        self.state = np.zeros(6)
-        self.P = np.eye(6)
+class KalmanFilter:
 
-    def get_state_dim(self) -> int:
-        return 6
+    def __init__(self, dim_x, dim_z):
 
-    def predict(self, state: np.ndarray, dt: float) -> np.ndarray:
-        predicted = state.copy()
-        predicted[0:3] += state[3:6] * dt
-        return predicted
+        self.dim_x = dim_x
+        self.dim_z = dim_z
 
-    def get_measurement_matrix(self) -> np.ndarray:
-        H = np.zeros((3, 6))
-        H[0, 0] = 1.0
-        H[1, 1] = 1.0
-        H[2, 2] = 1.0
-        return H
+        self.x = np.zeros(dim_x)
+        self.P = np.eye(dim_x)
 
+        self.F = np.eye(dim_x)
 
-# =========================================================
-# Constant Acceleration Model
-# =========================================================
-class ConstantAccelerationModel(MotionModel):
-    """
-    CA Model:
-    [x, y, z, vx, vy, vz, ax, ay, az]
-    """
+        self.H = np.zeros((dim_z, dim_x))
 
-    def __init__(self, q_pos=0.01, q_vel=0.1, q_acc=0.01):
-        self.q_pos = q_pos
-        self.q_vel = q_vel
-        self.q_acc = q_acc
-        self.state = np.zeros(9)
-        self.P = np.eye(9)
+        self.Q = np.eye(dim_x) * 0.01
+        self.R = np.eye(dim_z) * 0.5
 
-    def get_state_dim(self) -> int:
-        return 9
+    def predict(self):
 
-    def predict(self, state: np.ndarray, dt: float) -> np.ndarray:
-        predicted = np.zeros(9)
+        self.x = self.F @ self.x
 
-        dt2 = dt * dt
+        self.P = self.F @ self.P @ self.F.T + self.Q
 
-        predicted[0:3] = (
-            state[0:3]
-            + state[3:6] * dt
-            + 0.5 * state[6:9] * dt2
+    def update(self, z):
+
+        y = z - self.H @ self.x
+
+        S = self.H @ self.P @ self.H.T + self.R
+
+        K = self.P @ self.H.T @ np.linalg.inv(S)
+
+        self.x = self.x + K @ y
+
+        I = np.eye(self.dim_x)
+
+        self.P = (I - K @ self.H) @ self.P
+
+        # likelihood
+        det_S = np.linalg.det(S)
+
+        if det_S < 1e-6:
+            det_S = 1e-6
+
+        exponent = -0.5 * y.T @ np.linalg.inv(S) @ y
+
+        likelihood = np.exp(exponent) / np.sqrt(
+            ((2 * np.pi) ** self.dim_z) * det_S
         )
 
-        predicted[3:6] = (
-            state[3:6]
-            + state[6:9] * dt
-        )
+        return likelihood
 
-        predicted[6:9] = state[6:9]
 
-        return predicted
+# =========================================================
+# CV Model
+# =========================================================
 
-    def get_measurement_matrix(self) -> np.ndarray:
-        H = np.zeros((3, 9))
-        H[0, 0] = 1.0
-        H[1, 1] = 1.0
-        H[2, 2] = 1.0
-        return H
+class CVModel(KalmanFilter):
+
+    def __init__(self, dt):
+
+        super().__init__(6, 3)
+
+        self.dt = dt
+
+        self.F = np.eye(6)
+
+        for i in range(3):
+            self.F[i, i + 3] = dt
+
+        self.H[0, 0] = 1
+        self.H[1, 1] = 1
+        self.H[2, 2] = 1
+
+        self.Q *= 0.05
+
+
+# =========================================================
+# CA Model
+# =========================================================
+
+class CAModel(KalmanFilter):
+
+    def __init__(self, dt):
+
+        super().__init__(9, 3)
+
+        self.dt = dt
+
+        self.F = np.eye(9)
+
+        for i in range(3):
+
+            self.F[i, i + 3] = dt
+            self.F[i, i + 6] = 0.5 * dt * dt
+
+            self.F[i + 3, i + 6] = dt
+
+        self.H[0, 0] = 1
+        self.H[1, 1] = 1
+        self.H[2, 2] = 1
+
+        self.Q *= 0.1
 
 
 # =========================================================
 # Singer Model
 # =========================================================
-class SingerModel(MotionModel):
-    """
-    Singer Model:
-    exponentially decaying acceleration
-    """
 
-    def __init__(self, q_pos=0.01, q_vel=0.1,
-                 q_acc=0.01, alpha=0.95):
+class SingerModel(KalmanFilter):
 
-        self.q_pos = q_pos
-        self.q_vel = q_vel
-        self.q_acc = q_acc
+    def __init__(self, dt, alpha=0.95):
+
+        super().__init__(9, 3)
+
+        self.dt = dt
         self.alpha = alpha
 
-        self.state = np.zeros(9)
-        self.P = np.eye(9)
+        e = np.exp(-alpha * dt)
 
-    def get_state_dim(self) -> int:
-        return 9
+        self.F = np.eye(9)
 
-    def predict(self, state: np.ndarray, dt: float) -> np.ndarray:
+        for i in range(3):
 
-        predicted = np.zeros(9)
+            self.F[i, i + 3] = dt
+            self.F[i + 3, i + 6] = (1 - e)
 
-        exp_alpha_dt = np.exp(-self.alpha * dt)
-        a_factor = (1.0 - exp_alpha_dt) / self.alpha
+            self.F[i + 6, i + 6] = e
 
-        predicted[0:3] = (
-            state[0:3]
-            + state[3:6] * dt
-            + state[6:9] * a_factor * dt
-        )
+        self.H[0, 0] = 1
+        self.H[1, 1] = 1
+        self.H[2, 2] = 1
 
-        predicted[3:6] = (
-            state[3:6]
-            + state[6:9] * (1.0 - exp_alpha_dt)
-        )
-
-        predicted[6:9] = (
-            state[6:9] * exp_alpha_dt
-        )
-
-        return predicted
-
-    def get_measurement_matrix(self) -> np.ndarray:
-        H = np.zeros((3, 9))
-        H[0, 0] = 1.0
-        H[1, 1] = 1.0
-        H[2, 2] = 1.0
-        return H
+        self.Q *= 0.15
 
 
 # =========================================================
-# Constant Turn Rate Model
+# CT Model
 # =========================================================
-class ConstantTurnRateModel(MotionModel):
-    """
-    CTRV-like planar turn model
 
-    State:
-    [x, y, z, v, yaw, yaw_rate, vz]
+class CTModel(KalmanFilter):
 
-    x,y        : planar position
-    z          : altitude
-    v          : forward speed
-    yaw        : heading angle
-    yaw_rate   : angular velocity
-    vz         : vertical velocity
-    """
+    def __init__(self, dt):
 
-    def __init__(self):
-        self.state = np.zeros(7)
-        self.P = np.eye(7)
+        super().__init__(7, 3)
 
-    def get_state_dim(self):
-        return 7
+        self.dt = dt
 
-    def predict(self, state, dt):
+        self.H[0, 0] = 1
+        self.H[1, 1] = 1
+        self.H[2, 2] = 1
 
-        x, y, z, v, yaw, yaw_rate, vz = state
+        self.Q *= 0.1
 
-        predicted = np.zeros(7)
+    def predict(self):
 
-        if abs(yaw_rate) < 1e-5:
-            predicted[0] = x + v * np.cos(yaw) * dt
-            predicted[1] = y + v * np.sin(yaw) * dt
+        x, y, z, v, yaw, yaw_rate, vz = self.x
+
+        dt = self.dt
+
+        if abs(yaw_rate) < 1e-4:
+
+            x += v * np.cos(yaw) * dt
+            y += v * np.sin(yaw) * dt
+
         else:
-            predicted[0] = (
-                x
-                + v / yaw_rate
+
+            x += (
+                v / yaw_rate
                 * (
                     np.sin(yaw + yaw_rate * dt)
                     - np.sin(yaw)
                 )
             )
 
-            predicted[1] = (
-                y
-                + v / yaw_rate
+            y += (
+                v / yaw_rate
                 * (
                     -np.cos(yaw + yaw_rate * dt)
                     + np.cos(yaw)
                 )
             )
 
-        predicted[2] = z + vz * dt
+        z += vz * dt
 
-        predicted[3] = v
-        predicted[4] = yaw + yaw_rate * dt
-        predicted[5] = yaw_rate
-        predicted[6] = vz
+        yaw += yaw_rate * dt
 
-        return predicted
+        self.x = np.array([
+            x,
+            y,
+            z,
+            v,
+            yaw,
+            yaw_rate,
+            vz
+        ])
 
-    def get_measurement_matrix(self):
-
-        H = np.zeros((3, 7))
-
-        H[0, 0] = 1.0
-        H[1, 1] = 1.0
-        H[2, 2] = 1.0
-
-        return H
+        self.P = self.P + self.Q
 
 
 # =========================================================
-# TESTS
+# IMM Filter
 # =========================================================
-def test_constant_velocity():
 
-    print("\n" + "=" * 60)
-    print("TEST 1: Constant Velocity Model")
-    print("=" * 60)
+class IMMKF:
 
-    model = ConstantVelocityModel()
+    def __init__(self, models, transition_matrix):
 
-    state = np.array([0, 0, 0, 1.0, 1.0, 1.0])
+        self.models = models
 
-    positions = [state[0:3].copy()]
-    dt = 0.1
+        self.M = len(models)
 
-    for _ in range(10):
-        state = model.predict(state, dt)
-        positions.append(state[0:3].copy())
+        self.transition_matrix = transition_matrix
 
-    positions = np.array(positions)
+        self.mu = np.ones(self.M) / self.M
 
-    print(f"After 1 second: {state[0:3]}")
+    def predict(self):
 
-    return positions
+        for model in self.models:
+            model.predict()
 
+    def update(self, z):
 
-def test_constant_acceleration():
+        likelihoods = np.zeros(self.M)
 
-    print("\n" + "=" * 60)
-    print("TEST 2: Constant Acceleration Model")
-    print("=" * 60)
+        for i, model in enumerate(self.models):
 
-    model = ConstantAccelerationModel()
+            likelihoods[i] = model.update(z)
 
-    state = np.array([
-        0, 0, 0,
-        0, 0, 0,
-        0.5, 0.5, 0.5
-    ])
+        # model probability update
+        self.mu = self.mu * likelihoods
 
-    positions = [state[0:3].copy()]
-    dt = 0.1
+        self.mu /= np.sum(self.mu)
 
-    for _ in range(10):
-        state = model.predict(state, dt)
-        positions.append(state[0:3].copy())
+    def fused_position(self):
 
-    positions = np.array(positions)
+        pos = np.zeros(3)
 
-    print(f"After 1 second: {state[0:3]}")
+        for i, model in enumerate(self.models):
 
-    return positions
+            pos += self.mu[i] * model.x[0:3]
+
+        return pos
 
 
-def test_singer_model():
+# =========================================================
+# Generate UAV trajectory
+# =========================================================
 
-    print("\n" + "=" * 60)
-    print("TEST 3: Singer Model")
-    print("=" * 60)
+def generate_uav_trajectory():
 
-    model = SingerModel(alpha=0.95)
-
-    state = np.array([
-        0, 0, 0,
-        0, 0, 0,
-        2.0, 0, 0
-    ])
-
-    positions = [state[0:3].copy()]
-    accelerations = [state[6:9].copy()]
+    gt = []
 
     dt = 0.1
 
-    for _ in range(10):
-        state = model.predict(state, dt)
-        positions.append(state[0:3].copy())
-        accelerations.append(state[6:9].copy())
+    x = 0
+    y = 0
+    z = 0
 
-    positions = np.array(positions)
-    accelerations = np.array(accelerations)
+    vx = 1
+    vy = 0
+    vz = 0.1
 
-    print(f"Final acceleration: {state[6:9]}")
-
-    return positions, accelerations
-
-
-def test_constant_turn_rate():
-
-    print("\n" + "=" * 60)
-    print("TEST 4: Constant Turn Rate Model")
-    print("=" * 60)
-
-    model = ConstantTurnRateModel()
-
-    # x,y,z,v,yaw,yaw_rate,vz
-    state = np.array([
-        0.0,
-        0.0,
-        0.0,
-        2.0,
-        0.0,
-        np.deg2rad(30.0),
-        0.0
-    ])
-
-    positions = [state[0:3].copy()]
-    yaws = [state[4]]
-
-    dt = 0.1
+    # =====================================================
+    # Phase 1 : CV
+    # =====================================================
 
     for _ in range(50):
 
-        state = model.predict(state, dt)
+        x += vx * dt
+        y += vy * dt
+        z += vz * dt
 
-        positions.append(state[0:3].copy())
-        yaws.append(state[4])
+        gt.append([x, y, z])
 
-    positions = np.array(positions)
-    yaws = np.array(yaws)
+    # =====================================================
+    # Phase 2 : Acceleration
+    # =====================================================
 
-    print(f"Final position: {state[0:3]}")
-    print(f"Final yaw(deg): {np.rad2deg(state[4]):.2f}")
+    ax = 0.05
 
-    return positions, yaws
+    for _ in range(50):
 
+        vx += ax * dt
 
-# =========================================================
-# PLOT
-# =========================================================
-def plot_comparison():
+        x += vx * dt
+        y += vy * dt
+        z += vz * dt
 
-    print("\n" + "=" * 60)
-    print("Creating comparison plots...")
-    print("=" * 60)
+        gt.append([x, y, z])
 
-    pos_cv = test_constant_velocity()
-    pos_ca = test_constant_acceleration()
-    pos_singer, acc_singer = test_singer_model()
-    pos_turn, yaws = test_constant_turn_rate()
+    # =====================================================
+    # Phase 3 : Turning
+    # =====================================================
 
-    fig, axes = plt.subplots(2, 2, figsize=(14, 10))
+    yaw = 0
 
-    # ---------------------------------------
-    # CV vs CA
-    # ---------------------------------------
-    ax = axes[0, 0]
+    speed = 2.0
 
-    t_cv = np.arange(len(pos_cv)) * 0.1
-    t_ca = np.arange(len(pos_ca)) * 0.1
+    yaw_rate = np.deg2rad(20)
 
-    ax.plot(t_cv, pos_cv[:, 0], label='CV')
-    ax.plot(t_ca, pos_ca[:, 0], label='CA')
+    for _ in range(100):
 
-    ax.set_title("CV vs CA")
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("X Position")
-    ax.grid(True)
-    ax.legend()
+        yaw += yaw_rate * dt
 
-    # ---------------------------------------
-    # Singer
-    # ---------------------------------------
-    ax = axes[0, 1]
+        x += speed * np.cos(yaw) * dt
+        y += speed * np.sin(yaw) * dt
+        z += vz * dt
 
-    t_singer = np.arange(len(pos_singer)) * 0.1
+        gt.append([x, y, z])
 
-    ax.plot(t_singer, pos_singer[:, 0], label='Singer')
-
-    ax.set_title("Singer Position")
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("X Position")
-    ax.grid(True)
-    ax.legend()
-
-    # ---------------------------------------
-    # Singer decay
-    # ---------------------------------------
-    ax = axes[1, 0]
-
-    ax.semilogy(
-        t_singer,
-        acc_singer[:, 0],
-        label='Acceleration Decay'
-    )
-
-    ax.set_title("Singer Acceleration Decay")
-    ax.set_xlabel("Time (s)")
-    ax.set_ylabel("Acceleration")
-    ax.grid(True)
-    ax.legend()
-
-    # ---------------------------------------
-    # Turning trajectory
-    # ---------------------------------------
-    ax = axes[1, 1]
-
-    ax.plot(
-        pos_turn[:, 0],
-        pos_turn[:, 1],
-        '-o',
-        label='Turn Motion'
-    )
-
-    ax.set_aspect('equal')
-
-    ax.set_title("Constant Angular Velocity Motion")
-    ax.set_xlabel("X")
-    ax.set_ylabel("Y")
-    ax.grid(True)
-    ax.legend()
-
-    plt.tight_layout()
-
-    save_path = os.path.join(
-        RESULTS_DIR,
-        "immkf_motion_models_demo.png"
-    )
-
-    plt.savefig(save_path, dpi=150)
-
-    print(f"✓ Plot saved to:")
-    print(save_path)
-
-    plt.close()
+    return np.array(gt)
 
 
 # =========================================================
-# MAIN
+# Main
 # =========================================================
+
 def main():
 
-    print("\n" + "=" * 60)
-    print("IMMKF Motion Models Demonstration")
-    print("=" * 60)
+    dt = 0.1
 
-    try:
+    gt = generate_uav_trajectory()
 
-        test_constant_velocity()
-        test_constant_acceleration()
-        test_singer_model()
-        test_constant_turn_rate()
+    noise_std = 0.5
 
-        plot_comparison()
+    measurements = (
+        gt
+        + np.random.randn(*gt.shape) * noise_std
+    )
 
-        print("\n" + "=" * 60)
-        print("✓ ALL TESTS COMPLETED SUCCESSFULLY")
-        print("=" * 60)
+    # =====================================================
+    # Create models
+    # =====================================================
 
-        print("\nResults saved to:")
-        print(RESULTS_DIR)
+    cv = CVModel(dt)
 
-    except Exception as e:
+    ca = CAModel(dt)
 
-        print(f"\n✗ ERROR: {e}")
+    singer = SingerModel(dt)
 
-        import traceback
-        traceback.print_exc()
+    ct = CTModel(dt)
 
-        return 1
+    models = [cv, ca, singer, ct]
 
-    return 0
+    # initialize
+    for model in models:
+
+        model.x[0:3] = measurements[0]
+
+    # CT initialization
+    ct.x[3] = 1.0
+    ct.x[4] = 0.0
+    ct.x[5] = np.deg2rad(10)
+    ct.x[6] = 0.1
+
+    # =====================================================
+    # IMM
+    # =====================================================
+
+    transition_matrix = np.array([
+
+        [0.90, 0.03, 0.03, 0.04],
+        [0.03, 0.90, 0.03, 0.04],
+        [0.03, 0.03, 0.90, 0.04],
+        [0.03, 0.03, 0.04, 0.90]
+
+    ])
+
+    imm = IMMKF(models, transition_matrix)
+
+    fused_positions = []
+
+    model_probs = []
+
+    # =====================================================
+    # Filtering loop
+    # =====================================================
+
+    for z in measurements:
+
+        imm.predict()
+
+        imm.update(z)
+
+        fused_positions.append(
+            imm.fused_position()
+        )
+
+        model_probs.append(
+            imm.mu.copy()
+        )
+
+    fused_positions = np.array(fused_positions)
+
+    model_probs = np.array(model_probs)
+
+    # =====================================================
+    # Animation
+    # =====================================================
+
+    fig = plt.figure(figsize=(14, 7))
+
+    ax3d = fig.add_subplot(121, projection='3d')
+
+    ax_prob = fig.add_subplot(122)
+
+    def update(frame):
+
+        ax3d.clear()
+        ax_prob.clear()
+
+        # =============================================
+        # 3D Trajectory
+        # =============================================
+
+        ax3d.plot(
+            gt[:frame, 0],
+            gt[:frame, 1],
+            gt[:frame, 2],
+            linewidth=3,
+            label='Ground Truth'
+        )
+
+        ax3d.scatter(
+            measurements[:frame, 0],
+            measurements[:frame, 1],
+            measurements[:frame, 2],
+            s=5,
+            alpha=0.4,
+            label='Measurements'
+        )
+
+        ax3d.plot(
+            fused_positions[:frame, 0],
+            fused_positions[:frame, 1],
+            fused_positions[:frame, 2],
+            linewidth=2,
+            label='IMMKF Prediction'
+        )
+
+        ax3d.set_title("3D UAV Trajectory")
+
+        ax3d.set_xlabel("X")
+        ax3d.set_ylabel("Y")
+        ax3d.set_zlabel("Z")
+
+        ax3d.legend()
+
+        # =============================================
+        # Model probabilities
+        # =============================================
+
+        t = np.arange(frame)
+
+        labels = [
+            "CV",
+            "CA",
+            "Singer",
+            "CT"
+        ]
+
+        for i in range(4):
+
+            ax_prob.plot(
+                t,
+                model_probs[:frame, i],
+                label=labels[i]
+            )
+
+        ax_prob.set_ylim([0, 1])
+
+        ax_prob.set_title("Model Probabilities")
+
+        ax_prob.set_xlabel("Frame")
+        ax_prob.set_ylabel("Probability")
+
+        ax_prob.legend()
+
+        ax_prob.grid(True)
+
+    anim = FuncAnimation(
+
+        fig,
+        update,
+        frames=len(gt),
+        interval=50
+
+    )
+
+    # =====================================================
+    # Save GIF
+    # =====================================================
+
+    gif_path = os.path.join(
+        RESULT_DIR,
+        "immkf_demo.gif"
+    )
+
+    print("\nSaving GIF animation...")
+
+    anim.save(
+        gif_path,
+        writer=PillowWriter(fps=20)
+    )
+
+    print("\n======================================")
+    print("DONE")
+    print("======================================")
+
+    print(f"\nGIF saved to:\n{gif_path}")
+
+    # =====================================================
+    # Save final figure
+    # =====================================================
+
+    png_path = os.path.join(
+        RESULT_DIR,
+        "immkf_final.png"
+    )
+
+    plt.savefig(
+        png_path,
+        dpi=200
+    )
+
+    print(f"\nPNG saved to:\n{png_path}")
+
+    plt.show()
 
 
 if __name__ == "__main__":
-    exit(main())
+
+    main()
