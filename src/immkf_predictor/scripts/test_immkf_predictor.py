@@ -64,19 +64,38 @@ class SingerModel(KalmanFilter):
 
 class CTModel(KalmanFilter):
     def __init__(self, dt):
-        super().__init__(7, 3)
+        super().__init__(8, 3)
         self.dt = dt
-        for i in range(3): self.H[i, i] = 1
+        for i in range(3):
+            self.H[i, i] = 1
+
     def predict(self):
-        x, y, z, v, yaw, yaw_rate, vz = self.x
+        x, y, z, v, yaw, pitch, yaw_rate, pitch_rate = self.x
         dt = self.dt
-        if abs(yaw_rate) < 1e-4:
-            x += v*np.cos(yaw)*dt; y += v*np.sin(yaw)*dt
-        else:
-            x += v/yaw_rate*(np.sin(yaw+yaw_rate*dt)-np.sin(yaw))
-            y += v/yaw_rate*(-np.cos(yaw+yaw_rate*dt)+np.cos(yaw))
-        z += vz*dt; yaw += yaw_rate*dt
-        self.x = np.array([x, y, z, v, yaw, yaw_rate, vz])
+
+        # 更新角度
+        yaw += yaw_rate * dt
+        pitch += pitch_rate * dt
+
+        # 三维速度分解
+        vx = v * np.cos(pitch) * np.cos(yaw)
+        vy = v * np.cos(pitch) * np.sin(yaw)
+        vz = v * np.sin(pitch)
+
+        # 更新位置
+        x += vx * dt
+        y += vy * dt
+        z += vz * dt
+
+        self.x = np.array([
+            x, y, z,
+            v,
+            yaw,
+            pitch,
+            yaw_rate,
+            pitch_rate
+        ])
+
         self.P = self.P + self.Q
 
 # ================= IMM =================
@@ -166,7 +185,14 @@ def run_single(mode):
     measurements = gt + np.random.randn(*gt.shape) * 0.1
     models = [CVModel(dt), CAModel(dt), SingerModel(dt), CTModel(dt)]
     for m in models: m.x[:3] = measurements[0]
-    models[-1].x[3:] = [1.0, 0.0, np.deg2rad(10), 0.1]
+    # models[-1].x[3:] = [1.0, 0.0, np.deg2rad(10), 0.1]
+    models[-1].x[3:] = [
+        2.0,                # speed
+        0.0,                # yaw
+        0.0,                # pitch
+        np.deg2rad(10),     # yaw_rate
+        np.deg2rad(3)       # pitch_rate
+    ]
     trans = np.array([[0.9,0.03,0.03,0.04],[0.03,0.9,0.03,0.04],[0.03,0.03,0.9,0.04],[0.03,0.03,0.04,0.9]])
     imm = IMMKF(models, trans)
     fused=[]; probs=[]; errs=[]

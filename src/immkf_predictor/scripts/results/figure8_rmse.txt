@@ -1,5 +1,5 @@
-CV: 0.3203 m
-CA: 0.1774 m
-Singer: 0.1907 m
-CT: 0.5900 m
-IMMKF: 0.3276 m
+CV: 0.3283 m
+CA: 0.1625 m
+Singer: 0.1744 m
+CT: 0.6220 m
+IMMKF: 0.3211 m
