@@ -1,10 +1,10 @@
 ign_sim_pointcloud_tool:
   ros__parameters:
     pcd_topic: livox/lidar
-    n_scan: 512
-    horizon_scan: 512
+    n_scan: 1024
+    horizon_scan: 1024
     ang_bottom: 7.0
-    ang_res_y: 0.2687  # 70.4 / 128
+    ang_res_y: 0.13  # 70.4 / 128
 
 # ==================== 2D Object Detection (YOLO) ====================
 yolo_detector:
@@ -14,7 +14,7 @@ yolo_detector:
     # camera_info_topic kept for compatibility with other nodes
     camera_info_topic: "camera/camera_info"
     model_type: "YOLO"
-    model: "/home/ld/all-in-one-sensor/src/yolo_ros/yolo_bringup/config/weight/best.pt"
+    model: "/home/ld/all-in-one-sensor/src/yolo_ros/yolo_bringup/config/weight/ztc.pt"
     fuse_model: false
     yolo_encoding: "bgr8"
     enable: true
@@ -61,6 +61,30 @@ lidar_detector:
     # Bounding box filtering
     min_bbox_size: 0.01                 # Minimum bbox dimension (meters)
     max_bbox_size: 0.5                # Maximum bbox dimension (meters)
+
+# ==================== 2D BBox + Point Cloud Fusion ====================
+lidar_det_distance:
+  ros__parameters:
+    # Input topics
+    detections_topic: "detections"                         # YOLO 2D detections
+    cloud_topic: "livox/lidar"                         # Registered LiDAR point cloud
+    camera_info_topic: "front_industrial_camera/camera_info"  # Camera intrinsics
+
+    # Frames
+    camera_frame: "front_industrial_camera"                # Camera optical/frame id in TF
+    target_frame: "front_mid70"                                       # Empty means keep LiDAR frame
+
+    # ROI and visualization
+    bbox_margin_pixels: 8.0
+    min_depth: 0.1
+    max_depth: 80.0
+    min_box_dimension: 0.0005
+    center_marker_scale: 0.2
+    direction_marker_scale: 0.03
+
+    # Output topics for RViz inspection
+    output_cloud_topic: "lidar_det_distance/cropped_cloud"
+    center_marker_topic: "lidar_det_distance/center_markers"
 
 # ==================== Multi-Sensor Fusion ====================
 fusion_node:

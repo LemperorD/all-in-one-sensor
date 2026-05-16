@@ -104,14 +104,22 @@ def generate_launch_description():
     load_composable_nodes = LoadComposableNodes(
         target_container=["/", namespace, "/perception_container"],
         composable_node_descriptions=[
-            # 3D Object Detection (LiDAR-based Component)
+            # 2D bbox + LiDAR projection/clustering component
             ComposableNode(
-                package="lidar_detector",
-                plugin="lidar_detector::LidarDetectorNode",
-                name="lidar_detector",
+                package="lidar_det_distance",
+                plugin="lidar_det_distance::LidarDetDistanceNode",
+                name="lidar_det_distance",
                 namespace=namespace,
                 parameters=[configured_params],
             ),
+            # # 3D Object Detection (LiDAR-based Component)
+            # ComposableNode(
+            #     package="lidar_detector",
+            #     plugin="lidar_detector::LidarDetectorNode",
+            #     name="lidar_detector",
+            #     namespace=namespace,
+            #     parameters=[configured_params],
+            # ),
             # Multi-Sensor Fusion Component
             ComposableNode(
                 package="sensor_fusion",

@@ -15,7 +15,7 @@
         <!--gimbal base-->
         <xmacro_block name="gimbal_base"/>
         <!--livox-->
-        <xmacro_block name="livox" prefix="front_" parent="gimbal_pitch" pose="0 0 0.107 0 0 0" update_rate="20" samples="512"/>
+        <xmacro_block name="livox" prefix="front_" parent="gimbal_pitch" pose="0 0 0.107 0 0 0" update_rate="50" samples="512"/>
         <!--industrial camera-->
         <xmacro_block name="industrial_camera" prefix="front_" parent="gimbal_pitch" pose="0.1 0 0.045 0 0 0" update_rate="30" horizontal_fov="1" width="1920" height="1080"/>
         <!--speed monitor-->

@@ -1,0 +1,3 @@
+CA: 0.1124 m
+Singer: 0.1173 m
+IMMKF: 0.1148 m

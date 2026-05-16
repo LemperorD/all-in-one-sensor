@@ -1,0 +1,4 @@
+composite: 0.1148 m
+figure8: 0.3669 m
+spiral: 0.2926 m
+circle_acc: 0.3518 m
